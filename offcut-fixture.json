@@ -1,0 +1,68 @@
+{
+  "parts": [
+    {
+      "label": "P0",
+      "w": 10,
+      "h": 10,
+      "qty": 1,
+      "allowRotate": true
+    },
+    {
+      "label": "P1",
+      "w": 33,
+      "h": 27,
+      "qty": 2,
+      "allowRotate": true
+    },
+    {
+      "label": "P2",
+      "w": 56,
+      "h": 44,
+      "qty": 1,
+      "allowRotate": true
+    },
+    {
+      "label": "P3",
+      "w": 19,
+      "h": 61,
+      "qty": 2,
+      "allowRotate": true
+    },
+    {
+      "label": "P4",
+      "w": 42,
+      "h": 18,
+      "qty": 1,
+      "allowRotate": true
+    },
+    {
+      "label": "P5",
+      "w": 65,
+      "h": 35,
+      "qty": 2,
+      "allowRotate": true
+    }
+  ],
+  "stock": [
+    {
+      "w": 100,
+      "h": 100
+    }
+  ],
+  "kerf": 0.4,
+  "rotate": true,
+  "before": {
+    "panels": 2,
+    "squares": 22199202.723199993,
+    "largest": 4481.36,
+    "fragments": 11,
+    "compactness": 470129.4
+  },
+  "after": {
+    "panels": 2,
+    "squares": 41995036.01919998,
+    "largest": 6459.999999999999,
+    "fragments": 11,
+    "compactness": 510634.60000000003
+  }
+}
