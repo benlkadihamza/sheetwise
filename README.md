@@ -53,3 +53,7 @@ Undo move keeps up to 40 moves in the current session. Manual layouts are saved 
 Open the private site in Safari while online and signed in. Wait for **Offline ready on this device** at the bottom. Use Share → Add to Home Screen → Open as Web App → Add, then open the new Home Screen app online once and wait for Offline ready there too. That installed app can then reopen offline, optimize jobs and move parts. Jobs and cached files stay in that browser/app on that device. Clearing website data or device storage eviction can remove them; reopen online to prepare again. The hosted site remains owner-private.
 
 When an update is available, use **Update app** in the footer while online. Before publishing source changes, run `node prepare-offline.cjs` to update the offline shell revision. The service worker caches only listed static app files and never account pages or API responses. All fonts use local system fallbacks so the app does not require external font downloads.
+
+## Printing from an installed iPhone app
+
+Print / PDF opens report actions. Use Share PDF, then Print or Save to Files from the iPhone share sheet. Save PDF is the fallback when file sharing is unavailable. Browser print remains available outside the installed iOS app. PDFs are generated locally using the bundled jsPDF 4.2.1 (MIT; license in dist/vendor/) and remain available offline after the app update is installed.
