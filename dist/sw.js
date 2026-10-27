@@ -1,6 +1,6 @@
 // Sheetwise app shell: explicit assets only; no account pages or API responses.
-const VERSION='sheetwise-offline-c74f77f980acc666';
-const ASSETS=['./index.html','./style.css','./optimizer.js','./banding.js','./units.js','./app.js','./workshop.js','./manual-geometry.js','./manual.js','./offline.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+const VERSION='sheetwise-offline-99285d09d765ed3f';
+const ASSETS=['./index.html','./style.css','./optimizer.js','./banding.js','./units.js','./app.js','./workshop.js','./manual-geometry.js','./manual.js','./offline.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png','./vendor/jspdf.umd.min.js','./report-pdf.js','./report-actions.js'];
 const BASE=new URL('./',self.location.href),SHELL=new URL('index.html',BASE).href;
 const allowed=new Set(ASSETS.map(path=>new URL(path,BASE).pathname));
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(VERSION);for(const asset of ASSETS){if(!await cache.match(new URL(asset,BASE)))throw Error('Open the signed-in app online to prepare offline access.');}})()));
