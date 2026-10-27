@@ -1,0 +1,8 @@
+{
+  "name": "sheetwise",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sheet cutting planner with kerf, rotation, edge banding and printable reports",
+  "scripts": {"start": "node server.cjs", "test": "node check.cjs"},
+  "engines": {"node": ">=18"}
+}
