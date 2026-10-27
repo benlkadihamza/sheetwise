@@ -57,3 +57,5 @@ When an update is available, use **Update app** in the footer while online. Befo
 ## Printing from an installed iPhone app
 
 Print / PDF opens report actions. Use Share PDF, then Print or Save to Files from the iPhone share sheet. Save PDF is the fallback when file sharing is unavailable. Browser print remains available outside the installed iOS app. PDFs are generated locally using the bundled jsPDF 4.2.1 (MIT; license in dist/vendor/) and remain available offline after the app update is installed.
+
+Manual dragging snaps near neighboring part edges and sheet boundaries. The attraction radius is 12 screen pixels for mouse/stylus and 18 for touch, independent of the diagram scale. Adjacent pieces retain the configured blade kerf. Nearby valid positions are preferred over overlapping alignment targets, and the final location still needs to allow guillotine cuts. Feedback under the sheet explains snaps and rejected moves.

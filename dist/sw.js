@@ -1,5 +1,5 @@
 // Sheetwise app shell: explicit assets only; no account pages or API responses.
-const VERSION='sheetwise-offline-25256cedd2ab1a71';
+const VERSION='sheetwise-offline-047ad88e721dc4ee';
 const ASSETS=['./index.html','./style.css','./optimizer.js','./banding.js','./units.js','./app.js','./workshop.js','./manual-geometry.js','./manual.js','./offline.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png','./vendor/jspdf.umd.min.js','./report-pdf.js','./report-actions.js'];
 const BASE=new URL('./',self.location.href),SHELL=new URL('index.html',BASE).href;
 const allowed=new Set(ASSETS.map(path=>new URL(path,BASE).pathname));
