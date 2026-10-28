@@ -79,3 +79,6 @@ On every board, automatic packing starts with a remaining repeated-piece batch (
 
 
 Large-first update: every new board tries the largest-area piece type first, then smaller types, retaining identical-piece batches. Manual moves also trigger forward consolidation: later-board pieces are tried largest first in actual geometric gaps on earlier boards, respecting boundaries, kerf and rotation permissions. Existing parts keep their coordinates; the piece just dragged is excluded from automatic refill. Empty boards are removed, statistics/offcuts/PDF/storage reflect the result, and the inline Undo move restores the manual edit plus all resulting transfers in one step.
+
+
+Transfer approval update: after each valid manual move, show one compatible-piece notification with dimensions and source/destination sheets. Move piece approves exactly one transfer; Not now dismisses it without transferring. Additional matches require separate approval. New moves refresh the suggestion; input edits, Optimize and Undo clear it. Approval checks the current layout and settings against the suggestion to prevent stale transfers. Saved layouts and PDF output include only approved moves.

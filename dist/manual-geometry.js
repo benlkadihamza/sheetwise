@@ -81,14 +81,14 @@ function transferToEarlierSheet(result,from,index,kerf,allowRotate=false){
  }return null;
 }
 // Existing parts stay at their chosen coordinates. Only later-board pieces move forward.
-function refillEarlierSheets(result,kerf,canRotate=()=>false,skipIds=[]){
+function refillEarlierSheets(result,kerf,canRotate=()=>false,skipIds=[],maxTransfers=Infinity){
  let sheets=[...result.sheets];const transfers=[],skip=new Set(skipIds);
- for(let targetIndex=0;targetIndex<sheets.length-1;targetIndex++){
+ boards: for(let targetIndex=0;targetIndex<sheets.length-1;targetIndex++){
   while(true){const candidates=[];for(let from=targetIndex+1;from<sheets.length;from++)for(let index=0;index<sheets[from].pieces.length;index++){const piece=sheets[from].pieces[index];if(!skip.has(piece.id))candidates.push({from,index,piece});}
    candidates.sort((a,b)=>b.piece.w*b.piece.h-a.piece.w*a.piece.h||a.from-b.from||a.index-b.index);let choice;
    for(const candidate of candidates){const placed=findSheetPlacement(sheets[targetIndex],candidate.piece,kerf,canRotate(candidate.piece));if(placed){choice={...candidate,placed};break;}}
    if(!choice)break;const {from,index,piece,placed}=choice,target=sheets[targetIndex],source=sheets[from];sheets[targetIndex]={...target,pieces:[...target.pieces,placed]};sheets[from]={...source,pieces:source.pieces.filter((_,i)=>i!==index)};
-   transfers.push({id:piece.id,label:piece.label,from:from+1,to:targetIndex+1});if(!sheets[from].pieces.length)sheets.splice(from,1);
+   transfers.push({id:piece.id,label:piece.label,from:from+1,to:targetIndex+1});if(!sheets[from].pieces.length)sheets.splice(from,1);if(transfers.length>=maxTransfers)break boards;
   }
  }
  if(!transfers.length)return {result,transfers,removedBoards:0};
