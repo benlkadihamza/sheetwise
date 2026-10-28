@@ -27,7 +27,12 @@ function partitionSheet(sheet,kerf){
 // Keep blade-clearance strips out of reusable space even without a guillotine tree.
 function freeRectangles(sheet,kerf){let free=[{x:0,y:0,w:sheet.w,h:sheet.h}];for(const p of sheet.pieces){const bx=Math.max(0,p.x-kerf),by=Math.max(0,p.y-kerf),br=Math.min(sheet.w,p.x+p.w+kerf),bb=Math.min(sheet.h,p.y+p.h+kerf),next=[];for(const f of free){const l=Math.max(f.x,bx),t=Math.max(f.y,by),r=Math.min(f.x+f.w,br),b=Math.min(f.y+f.h,bb);if(r<=l+EPS||b<=t+EPS){next.push(f);continue;}if(t>f.y+EPS)next.push({x:f.x,y:f.y,w:f.w,h:t-f.y});if(b<f.y+f.h-EPS)next.push({x:f.x,y:b,w:f.w,h:f.y+f.h-b});if(l>f.x+EPS)next.push({x:f.x,y:t,w:l-f.x,h:b-t});if(r<f.x+f.w-EPS)next.push({x:r,y:t,w:f.x+f.w-r,h:b-t});}free=next;}return free;}
 function analyzeManualSheet(sheet,kerf){const partition=partitionSheet(sheet,kerf);return {...sheet,free:partition===null?freeRectangles(sheet,kerf):partition,isGuillotine:partition!==null};}
-function proposeMove(sheet,index,x,y,kerf){const error=validatePosition(sheet,index,x,y,kerf);if(error)return {error};const candidate={...sheet,pieces:sheet.pieces.map((p,i)=>i===index?{...p,x,y}:p)};return {sheet:analyzeManualSheet(candidate,kerf),error:''};}
+function turnedSheet(sheet,index){return {...sheet,pieces:sheet.pieces.map((p,i)=>i===index?{...p,w:p.h,h:p.w,turn:!p.turn}:p)};}
+function proposeMove(sheet,index,x,y,kerf,allowRotate=false,preferTurn=false){
+ const p=sheet.pieces[index],error=validatePosition(sheet,index,x,y,kerf);let chosen=sheet,rotated=false;
+ if(p&&allowRotate&&p.w!==p.h&&(error||preferTurn)){const turned=turnedSheet(sheet,index);if(!validatePosition(turned,index,x,y,kerf)){chosen=turned;rotated=true;}}
+ if(!rotated&&error)return {error};const candidate={...chosen,pieces:chosen.pieces.map((p,i)=>i===index?{...p,x,y}:p)};return {sheet:analyzeManualSheet(candidate,kerf),error:'',rotated};
+}
 // Snap distance is supplied in sheet units, converted from screen pixels by the editor.
 function snapPosition(sheet,index,x,y,kerf,tolerance=1,checkCuts=false){
  const p=sheet.pieces[index];if(!p||!Number.isFinite(x)||!Number.isFinite(y))return {x,y,snapped:false};
@@ -57,6 +62,15 @@ function snapPosition(sheet,index,x,y,kerf,tolerance=1,checkCuts=false){
   nearby.sort((a,b)=>a.distance-b.distance);for(const c of nearby){if(!proposeMove(sheet,index,c.x,c.y,kerf).error)return {x:c.x,y:c.y,snapped:true,corrected:true};}
  }
  return {...raw,snapped:false};
+}
+// Preserve orientation when it fits; otherwise try the turned footprint at the drop.
+function snapRotatingPosition(sheet,index,x,y,kerf,tolerance=1,checkCuts=false,allowRotate=false){
+ const p=sheet.pieces[index];if(!p)return {x,y,snapped:false,error:'Select a part first.'};
+ const variants=[{sheet,rotated:false}];if(allowRotate&&p.w!==p.h)variants.push({sheet:turnedSheet(sheet,index),rotated:true});
+ const atRaw=variants.find(v=>!validatePosition(v.sheet,index,x,y,kerf));
+ const trial=v=>{const snapped=snapPosition(v.sheet,index,x,y,kerf,tolerance,checkCuts),piece=v.sheet.pieces[index];return {...snapped,w:piece.w,h:piece.h,rotated:v.rotated,error:validatePosition(v.sheet,index,snapped.x,snapped.y,kerf)};};
+ if(atRaw)return trial(atRaw);
+ const choices=variants.map(trial).filter(v=>!v.error).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y)||Number(a.rotated)-Number(b.rotated));return choices[0]||trial(variants[0]);
 }
 function layoutWithSheets(result,sheets){return {...result,sheets,area:sheets.reduce((sum,s)=>sum+s.w*s.h,0),used:sheets.reduce((sum,s)=>sum+s.pieces.reduce((a,p)=>a+p.w*p.h,0),0)};}
 // Search real geometric gaps, including spaces crossing reported remnant boundaries.
@@ -103,5 +117,5 @@ function restoreLayoutSheets(saved,baseline,parts,kerf,rotate){try{
   for(let i=0;i<sheet.pieces.length;i++)if(validatePosition(sheet,i,sheet.pieces[i].x,sheet.pieces[i].y,kerf))return null;restored.push(analyzeManualSheet(sheet,kerf));
  }return seen.size===expected.size?restored:null;
  }catch{return null;}}
-const api={validatePosition,partitionSheet,freeRectangles,analyzeManualSheet,proposeMove,snapPosition,layoutWithSheets,findSheetPlacement,transferToEarlierSheet,refillEarlierSheets,restoreLayoutSheets};if(typeof module!=='undefined')module.exports=api;else root.ManualGeometry=api;
+const api={validatePosition,partitionSheet,freeRectangles,analyzeManualSheet,proposeMove,snapPosition,snapRotatingPosition,layoutWithSheets,findSheetPlacement,transferToEarlierSheet,refillEarlierSheets,restoreLayoutSheets};if(typeof module!=='undefined')module.exports=api;else root.ManualGeometry=api;
 })(typeof window!=='undefined'?window:this);

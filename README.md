@@ -82,3 +82,6 @@ Large-first update: every new board tries the largest-area piece type first, the
 
 
 Transfer approval update: after each valid manual move, show one compatible-piece notification with dimensions and source/destination sheets. Move piece approves exactly one transfer; Not now dismisses it without transferring. Additional matches require separate approval. New moves refresh the suggestion; input edits, Optimize and Undo clear it. Approval checks the current layout and settings against the suggestion to prevent stale transfers. Saved layouts and PDF output include only approved moves.
+
+
+Manual rotation-to-fit: with global rotation and the part permission enabled, manual drops and exact/keyboard moves try a 90° turn if the original footprint does not fit. Drag previews show the rotated footprint and magnet snapping uses its dimensions. Current orientation wins whenever it fits; squares and locked parts do not turn. Kerf, bounds, overlap checks, saved orientation, PDF and Undo remain consistent. Cross-board transfer suggestions still require approval.
