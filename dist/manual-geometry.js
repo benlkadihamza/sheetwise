@@ -59,13 +59,41 @@ function snapPosition(sheet,index,x,y,kerf,tolerance=1,checkCuts=false){
  return {...raw,snapped:false};
 }
 function layoutWithSheets(result,sheets){return {...result,sheets,area:sheets.reduce((sum,s)=>sum+s.w*s.h,0),used:sheets.reduce((sum,s)=>sum+s.pieces.reduce((a,p)=>a+p.w*p.h,0),0)};}
+// Search real geometric gaps, including spaces crossing reported remnant boundaries.
+// For each relevant X edge, sweep upward past collisions to the first safe Y.
+function findSheetPlacement(target,piece,kerf,allowRotate=false){
+ const variants=[{...piece}];if(allowRotate&&piece.w!==piece.h)variants.push({...piece,w:piece.h,h:piece.w,turn:!piece.turn});
+ const sorted=[...target.pieces].sort((a,b)=>a.y-b.y);let best;
+ for(const variant of variants){if(variant.w>target.w+EPS||variant.h>target.h+EPS)continue;
+  const xs=[0,target.w-variant.w,...target.pieces.flatMap(q=>[q.x,q.x+q.w+kerf,q.x-variant.w-kerf])];
+  for(const x of new Set(xs)){if(x<-EPS||x+variant.w>target.w+EPS)continue;let y=0;
+   for(const q of sorted){if(x+variant.w+kerf<=q.x+EPS||q.x+q.w+kerf<=x+EPS)continue;if(y+variant.h+kerf<=q.y+EPS||q.y+q.h+kerf<=y+EPS)continue;y=q.y+q.h+kerf;}
+   if(y+variant.h>target.h+EPS)continue;const draft={...target,pieces:[...target.pieces,{...variant,x,y,done:false}]};if(validatePosition(draft,target.pieces.length,x,y,kerf))continue;
+   const score=y*(target.w+1)+x;if(!best||score<best.score-EPS)best={piece:draft.pieces.at(-1),score};
+  }
+ }return best?best.piece:null;
+}
 function transferToEarlierSheet(result,from,index,kerf,allowRotate=false){
  const source=result.sheets[from],piece=source?.pieces[index];if(from<=0||!piece)return null;
- for(let targetIndex=0;targetIndex<from;targetIndex++){const target=result.sheets[targetIndex],free=analyzeManualSheet(target,kerf).free;let best;
-  const variants=[{...piece}];if(allowRotate&&piece.w!==piece.h)variants.push({...piece,w:piece.h,h:piece.w,turn:!piece.turn});
-  for(const f of free)for(const variant of variants){if(variant.w>f.w+EPS||variant.h>f.h+EPS)continue;const draft={...target,pieces:[...target.pieces,{...variant,done:false}]},trial=proposeMove(draft,target.pieces.length,f.x,f.y,kerf);if(trial.error)continue;const score=trial.sheet.free.reduce((sum,r)=>sum+(r.w*r.h)**2,0);if(!best||score>best.score)best={sheet:trial.sheet,score};}
-  if(!best)continue;const remaining={...source,pieces:source.pieces.filter((_,i)=>i!==index)},sourceAnalysis=analyzeManualSheet(remaining,kerf);remaining.free=sourceAnalysis.free;remaining.isGuillotine=sourceAnalysis.isGuillotine;const sheets=[...result.sheets];sheets[targetIndex]=best.sheet;sheets[from]=remaining;const removedSource=!remaining.pieces.length;if(removedSource)sheets.splice(from,1);return {result:layoutWithSheets(result,sheets),targetIndex,pieceIndex:best.sheet.pieces.length-1,removedSource};
+ for(let targetIndex=0;targetIndex<from;targetIndex++){const target=result.sheets[targetIndex],placed=findSheetPlacement(target,piece,kerf,allowRotate);if(!placed)continue;
+  const sheets=[...result.sheets];sheets[targetIndex]=analyzeManualSheet({...target,pieces:[...target.pieces,placed]},kerf);sheets[from]=analyzeManualSheet({...source,pieces:source.pieces.filter((_,i)=>i!==index)},kerf);const removedSource=!sheets[from].pieces.length;if(removedSource)sheets.splice(from,1);
+  return {result:layoutWithSheets(result,sheets),targetIndex,pieceIndex:target.pieces.length,removedSource};
  }return null;
+}
+// Existing parts stay at their chosen coordinates. Only later-board pieces move forward.
+function refillEarlierSheets(result,kerf,canRotate=()=>false,skipIds=[]){
+ let sheets=[...result.sheets];const transfers=[],skip=new Set(skipIds);
+ for(let targetIndex=0;targetIndex<sheets.length-1;targetIndex++){
+  while(true){const candidates=[];for(let from=targetIndex+1;from<sheets.length;from++)for(let index=0;index<sheets[from].pieces.length;index++){const piece=sheets[from].pieces[index];if(!skip.has(piece.id))candidates.push({from,index,piece});}
+   candidates.sort((a,b)=>b.piece.w*b.piece.h-a.piece.w*a.piece.h||a.from-b.from||a.index-b.index);let choice;
+   for(const candidate of candidates){const placed=findSheetPlacement(sheets[targetIndex],candidate.piece,kerf,canRotate(candidate.piece));if(placed){choice={...candidate,placed};break;}}
+   if(!choice)break;const {from,index,piece,placed}=choice,target=sheets[targetIndex],source=sheets[from];sheets[targetIndex]={...target,pieces:[...target.pieces,placed]};sheets[from]={...source,pieces:source.pieces.filter((_,i)=>i!==index)};
+   transfers.push({id:piece.id,label:piece.label,from:from+1,to:targetIndex+1});if(!sheets[from].pieces.length)sheets.splice(from,1);
+  }
+ }
+ if(!transfers.length)return {result,transfers,removedBoards:0};
+ // Analyze once per remaining board, after all transfers, for PDF/offcut accuracy.
+ sheets=sheets.map(sheet=>analyzeManualSheet(sheet,kerf));return {result:layoutWithSheets(result,sheets),transfers,removedBoards:result.sheets.length-sheets.length};
 }
 function restoreLayoutSheets(saved,baseline,parts,kerf,rotate){try{
  if(!Array.isArray(saved?.sheets)||saved.sheets.length>baseline.sheets.length)return null;
@@ -75,5 +103,5 @@ function restoreLayoutSheets(saved,baseline,parts,kerf,rotate){try{
   for(let i=0;i<sheet.pieces.length;i++)if(validatePosition(sheet,i,sheet.pieces[i].x,sheet.pieces[i].y,kerf))return null;restored.push(analyzeManualSheet(sheet,kerf));
  }return seen.size===expected.size?restored:null;
  }catch{return null;}}
-const api={validatePosition,partitionSheet,freeRectangles,analyzeManualSheet,proposeMove,snapPosition,layoutWithSheets,transferToEarlierSheet,restoreLayoutSheets};if(typeof module!=='undefined')module.exports=api;else root.ManualGeometry=api;
+const api={validatePosition,partitionSheet,freeRectangles,analyzeManualSheet,proposeMove,snapPosition,layoutWithSheets,findSheetPlacement,transferToEarlierSheet,refillEarlierSheets,restoreLayoutSheets};if(typeof module!=='undefined')module.exports=api;else root.ManualGeometry=api;
 })(typeof window!=='undefined'?window:this);
