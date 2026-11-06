@@ -17,7 +17,7 @@ function updateBanding(){
  let container=$('banding');if(!container)return;container.replaceChildren();let total=bandingTotal(state.parts);container.append(el('h2',{},'Edge banding'),el('p',{class:'band-total'},Number.isFinite(total)?(total / 100).toFixed(2)+' m total':'Check part dimensions'));
  container.append(el('p',{class:'hint'},'W1 / W2 run along the width; H1 / H2 run along the height. Totals include every requested part and quantity, including unplaced parts. Net length only; no trimming allowance.'));
  let table=el('table',{class:'band-table'}),head=el('tr');for(let t of ['Part','Per piece','Qty','Total'])head.append(el('th',{},t));table.append(head);
- for(let p of state.parts){let q=(p.qty===''||p.qty===undefined)?1:(Number(p.qty)||0),tr=el('tr');for(let t of [p.label,bandingLength(p).toFixed(2)+' cm',q,(bandingLength(p)*q).toFixed(2)+' cm'])tr.append(el('td',{},String(t)));table.append(tr);}container.append(table);
+ for(let p of state.parts){let q=(p.qty===''||p.qty===undefined)?1:(Number(p.qty)||0),tr=el('tr');for(let t of [p.label,(bandingLength(p) / 100).toFixed(2)+' m',q,(bandingLength(p) * q / 100).toFixed(2)+' m'])tr.append(el('td',{},String(t)));table.append(tr);}container.append(table);
 }
 function count(){updateBanding();$('partcount').textContent=`${state.parts.length} part types · ${state.parts.reduce((t,p)=>t+((p.qty===''||p.qty===undefined)?1:(Number(p.qty)||0)),0)} pieces total`;}
 function renderInputs(){$('rotate').checked=state.rotate===true;rows('stock','stocks');rows('parts','parts');$('kerf').value=Number((state.kerf*10).toFixed(6));count();}

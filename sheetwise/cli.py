@@ -114,7 +114,7 @@ def main(argv: List[str] | None = None) -> int:
         print(f"Unplaced pieces:       {len(unplaced)}")
         print(f"Material utilization:  {util:.1f}%")
         print(f"Arrangements tested:   {res['arrangementsEvaluated']}")
-        print(f"Total edge banding:    {banding_total(parts):.2f} cm")
+        print(f"Total edge banding:    {banding_total(parts) / 100:.2f} m")
 
         if unplaced:
             print("\nWARNING: The following pieces could not fit:")
