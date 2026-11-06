@@ -28,3 +28,5 @@
 .report-banding .report-banding-card{background:#edf3e5;border:1px solid #e7ebe1;border-radius:8px;padding:10px 12px;max-width:240px}.report-banding .report-banding-card small{display:block;color:#7c8873;font-size:9px;margin-bottom:8px}.report-banding .report-banding-card strong{font:600 19px Manrope,sans-serif;letter-spacing:-1px;color:var(--ink)}.report-banding .report-banding-card strong span{font-size:12px;letter-spacing:0;color:#8a9580}
 
 .report-stats{grid-template-columns:repeat(4,minmax(0,1fr))}@media print{.report-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.report-stats .stat{padding:10px 8px}}
+
+.report-dimension{display:inline-block;vertical-align:bottom}.report-band-line{display:block;border-top:1px solid currentColor;margin-bottom:2px}
