@@ -20,7 +20,7 @@ def generate_html_report(
     area = float(res_dict.get("area", 0.0))
     used = float(res_dict.get("used", 0.0))
     util = (used / area * 100.0) if area > 0 else 0.0
-    total_band = banding_total(parts)
+    total_band_m = banding_total(parts) / 100
 
     pages_html: List[str] = []
 
@@ -62,7 +62,7 @@ def generate_html_report(
                     <div class="stat"><small>Material utilization</small><strong>{util:.1f} <span>%</span></strong></div>
                     <div class="stat"><small>Sheets required</small><strong>{len(sheets)} <span>sheets</span></strong></div>
                     <div class="stat"><small>Unused area</small><strong>{(100 - util):.1f} <span>%</span></strong></div>
-                    <div class="stat"><small>Edge banding</small><strong>{total_band:.2f} <span>cm total</span></strong></div>
+                    <div class="stat"><small>Edge banding</small><strong>{total_band_m:.2f} <span>m total</span></strong></div>
                 </div>
             </div>
             """
@@ -230,7 +230,7 @@ def generate_pdf_report(
     area = float(res_dict.get("area", 0.0))
     used = float(res_dict.get("used", 0.0))
     util = (used / area * 100.0) if area > 0 else 0.0
-    total_band = banding_total(parts)
+    total_band_m = banding_total(parts) / 100
 
     doc = SimpleDocTemplate(
         output_path,
@@ -296,7 +296,7 @@ def generate_pdf_report(
                     f"{util:.1f}%",
                     f"{len(sheets)}",
                     f"{(100 - util):.1f}%",
-                    f"{total_band:.2f} cm",
+                    f"{total_band_m:.2f} m",
                 ],
             ]
             stats_table = Table(stats_data, colWidths=[140, 100, 140, 140])
