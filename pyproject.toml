@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sheetwise"
+version = "1.0.0"
+description = "Sheet cutting planner and guillotine layout optimizer with kerf, rotation, edge banding, and printable reports."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Sheetwise" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+pdf = ["reportlab>=4.0.0"]
+
+[project.scripts]
+sheetwise = "sheetwise.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sheetwise*"]

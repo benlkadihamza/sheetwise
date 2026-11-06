@@ -1,0 +1,3 @@
+# Core Sheetwise requires Python 3.8+ and has zero mandatory external dependencies!
+# Optional dependencies:
+reportlab>=4.0.0

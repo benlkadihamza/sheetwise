@@ -1,0 +1,13 @@
+{
+  "name": "sheetwise",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sheet cutting planner with kerf, rotation, edge banding and printable reports",
+  "scripts": {
+    "start": "python server.py",
+    "test": "python check.py",
+    "start:node": "node server.cjs",
+    "test:node": "node check.cjs"
+  }
+}
+

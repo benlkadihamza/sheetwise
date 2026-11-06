@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict');const {optimize}=require('./dist/optimizer.js');
+function verify(r,k){for(const s of r.sheets){for(const p of s.pieces){assert(p.x>=0&&p.y>=0&&p.x+p.w<=s.w+1e-8&&p.y+p.h<=s.h+1e-8);}for(let i=0;i<s.pieces.length;i++)for(let j=i+1;j<s.pieces.length;j++){let a=s.pieces[i],b=s.pieces[j];assert(a.x+a.w+k<=b.x+1e-8||b.x+b.w+k<=a.x+1e-8||a.y+a.h+k<=b.y+1e-8||b.y+b.h+k<=a.y+1e-8);}}}
+let r=optimize([{label:'A',w:50,h:100,qty:2}],[{w:100,h:100,qty:1}],0,false);assert.equal(r.unplaced.length,0);verify(r,0);
+r=optimize([{label:'A',w:50,h:100,qty:2}],[{w:100,h:100,qty:1}],3,false);assert.equal(r.unplaced.length,2);assert.equal(r.sheets.length,0);verify(r,3);
+assert.equal(optimize([{w:90,h:40,qty:1,allowRotate:true}],[{w:40,h:90,qty:1}],0,true).unplaced.length,0);
+assert.equal(optimize([{w:90,h:40,qty:1,allowRotate:true}],[{w:40,h:90,qty:1}],0,false).unplaced.length,1);
+for(let n=0;n<50;n++){let parts=Array.from({length:12},(_,i)=>({label:'p'+i,w:30+((n*97+i*43)%500),h:30+((n*37+i*83)%500),qty:2}));r=optimize(parts,[{w:1220,h:2440,qty:5}],3,true);assert.equal(r.sheets.reduce((t,s)=>t+s.pieces.length,0)+r.unplaced.length,24);verify(r,3);}console.log('Passed: kerf, rotation, stock limits, bounds, overlap, and 50 generated cases.');
+
+
+const {placeGroup}=require('./dist/optimizer.js');
+function verifyGroups(r,parts){for(let g=0;g<parts.length;g++){let boards=r.sheets.filter(s=>s.pieces.some(p=>p.groupId===g));assert(boards.length<=1,'Group spans multiple boards');let placed=boards.flatMap(s=>s.pieces).filter(p=>p.groupId===g).length,missing=r.unplaced.filter(p=>p.groupId===g).length;assert.equal(placed+missing,parts[g].qty);assert(placed===0||missing===0,'Partial group placed');}}
+let ps=[{label:'A',w:60,h:50,qty:2},{label:'B',w:40,h:50,qty:2},{label:'C',w:60,h:50,qty:2}];let grouped=optimize(ps,[{w:100,h:100,qty:3}],0,false);verifyGroups(grouped,ps);assert.equal(grouped.unplaced.length,0);assert.equal(grouped.sheets.length,2);
+let tooLarge=optimize([{w:60,h:100,qty:2}],[{w:100,h:100,qty:3}],0,false);assert.equal(tooLarge.unplaced.length,2);assert.equal(tooLarge.sheets.length,0);
+for(let n=0;n<40;n++){let parts=Array.from({length:12},(_,i)=>({label:'p'+i,w:10+(n*31+i*17)%70,h:10+(n*19+i*29)%70,qty:1+i%3}));let r=optimize(parts,[{w:100,h:100,qty:8}],.4,true);verify(r,.4);verifyGroups(r,parts);r.sheets.forEach((s,i)=>{let later=new Map([...r.sheets.slice(i+1).flatMap(s=>s.pieces),...r.unplaced].map(p=>[p.groupId,[]]));for(let p of [...r.sheets.slice(i+1).flatMap(s=>s.pieces),...r.unplaced])later.get(p.groupId).push({...p,w:parts[p.groupId].w,h:parts[p.groupId].h});for(let group of later.values())assert(!placeGroup(s,group,.4,true),'Whole group fits earlier board');});}
+console.log('Grouped placement passed: no split groups, whole-group leftovers, oversize groups, and 40 generated layouts.');
+
+let fixed=optimize([{w:90,h:40,qty:1,allowRotate:false}],[{w:40,h:90,qty:1}],0,true);assert.equal(fixed.unplaced.length,1);
+let turned=optimize([{w:90,h:40,qty:1,allowRotate:true}],[{w:40,h:90,qty:1}],0,true);assert.equal(turned.unplaced.length,0);assert.equal(turned.sheets[0].pieces[0].turn,true);
+let defaultFixed=optimize([{w:90,h:40,qty:1}],[{w:40,h:90,qty:1}],0,true);assert.equal(defaultFixed.unplaced.length,1);
+let mixedParts=[{w:90,h:40,qty:1,allowRotate:false},{w:90,h:40,qty:1,allowRotate:true}];let mixed=optimize(mixedParts,[{w:100,h:100,qty:2}],.4,true);verify(mixed,.4);verifyGroups(mixed,mixedParts);assert(mixed.sheets.flatMap(s=>s.pieces).filter(p=>p.groupId===0).every(p=>!p.turn&&p.w===90&&p.h===40));console.log('Per-part orientation passed: fixed, rotatable, fixed default, and mixed groups.');
+
+for(let n=0;n<8;n++){let p=Array.from({length:4},(_,i)=>({w:15+(n*13+i*23)%65,h:15+(n*17+i*11)%65,qty:1+i%2,allowRotate:true})),stock=[{w:100,h:100,qty:5}],fixed=optimize(p,stock,.4,false),rotated=optimize(p,stock,.4,true);assert(rotated.unplaced.length<=fixed.unplaced.length);if(rotated.unplaced.length===fixed.unplaced.length&&rotated.used===fixed.used)assert(rotated.area<=fixed.area);verify(rotated,.4);verifyGroups(rotated,p);}console.log('Rotation search includes fixed-layout baseline: never worse on equivalent placed parts.');
+
+for(let n=0;n<12;n++){let parts=Array.from({length:5},(_,i)=>({w:12+(n*23+i*17)%65,h:12+(n*11+i*29)%65,qty:1+i%2,allowRotate:n%2===0}));let r=optimize(parts,[{w:100,h:100,qty:8}],.4,true);verify(r,.4);verifyGroups(r,parts);for(let s of r.sheets)for(let f of s.free)assert(f.x+f.w>=s.w-1e-8||f.y+f.h>=s.h-1e-8,'Remnant must reach the right or bottom side');}console.log('Edge-only leftovers passed: 12 generated jobs with rotation on and off.');
+
+let automatic=optimize([{w:90,h:90,qty:1},{w:90,h:90,qty:1},{w:90,h:90,qty:1}],[{w:100,h:100}],.4,false);assert.equal(automatic.sheets.length,3);assert.equal(automatic.unplaced.length,0);verify(automatic,.4);let impossibleGroup=optimize([{w:90,h:90,qty:2}],[{w:100,h:100}],.4,false);assert.equal(impossibleGroup.unplaced.length,2);console.log('Automatic sheet count passed: enough stock generated; impossible groups still reported.');
+
+let fillers=[{label:'Large',w:60,h:100,qty:2},{label:'Small',w:40,h:50,qty:4}],filled=optimize(fillers,[{w:100,h:100,qty:2}],0,false,true);assert.equal(filled.unplaced.length,0);assert.equal(filled.sheets.length,2);assert.equal(filled.used/filled.area,1);assert(filled.sheets.every(s=>s.pieces.length===3));verify(filled,0);
+for(let n=0;n<10;n++){let ps=Array.from({length:6},(_,i)=>({w:10+(n*17+i*31)%70,h:10+(n*29+i*19)%70,qty:1+i%3,allowRotate:n%2===0}));let r=optimize(ps,[{w:100,h:100,qty:6}],.4,true,true);verify(r,.4);assert.equal(r.sheets.reduce((t,s)=>t+s.pieces.length,0)+r.unplaced.length,ps.reduce((t,p)=>t+p.qty,0));r.sheets.forEach((s,i)=>{for(let p of [...r.sheets.slice(i+1).flatMap(b=>b.pieces),...r.unplaced]){let original={...p,w:ps[p.groupId].w,h:ps[p.groupId].h};assert(!placeGroup(s,[original],.4,true),'A later piece could fill an earlier sheet');}});}console.log('Fill-first passed: 100% filler example, split quantities, conservation, and earlier-sheet exhaustion.');
+

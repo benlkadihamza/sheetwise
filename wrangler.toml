@@ -1,0 +1,10 @@
+name = "sheetwise"
+compatibility_date = "2024-04-03"
+
+# Cloudflare Pages / Workers static assets configuration
+[assets]
+directory = "./dist"
+
+# If deploying as a Python Cloudflare Worker:
+# main = "worker.py"
+# compatibility_flags = ["python_workers"]

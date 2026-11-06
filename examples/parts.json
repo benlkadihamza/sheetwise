@@ -1,0 +1,6 @@
+[
+  { "label": "Side panel", "w": 72, "h": 40, "qty": 4, "edges": { "top": true, "bottom": true } },
+  { "label": "Shelf", "w": 56, "h": 38, "qty": 6, "edges": { "left": true, "right": true } },
+  { "label": "Door", "w": 70, "h": 30, "qty": 2, "edges": { "top": true, "bottom": true, "left": true, "right": true } },
+  { "label": "Back panel", "w": 56, "h": 72, "qty": 1 }
+]
