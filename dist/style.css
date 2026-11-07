@@ -13,9 +13,17 @@
 
 .remnant-dimension{cursor:help}.remnant-dimension:hover text,.remnant-dimension:focus text{fill:#a52c26;font-weight:700}.remnant-dimension:hover line:not(.dimension-hit),.remnant-dimension:focus line:not(.dimension-hit){stroke:#a52c26}.remnant-dimension:focus{outline:none}
 
-.cut-part{cursor:pointer;transition:filter .12s}.cut-part:hover,.cut-part:focus{filter:brightness(.91);stroke:#315b48;stroke-width:1;outline:none}.cut-part.selected{stroke:#243c36;stroke-width:1.2;filter:brightness(.95)}
-
-.cut-part{cursor:default}
+.cut-piece-group{cursor:grab;user-select:none;touch-action:none}
+.cut-piece-group:focus-visible rect.cut-part{stroke:#243c36;stroke-width:1.5}
+.cut-piece-group.dragging{cursor:grabbing}
+.cut-piece-group.dragging rect.cut-part{filter:drop-shadow(0 4px 12px rgba(0,0,0,0.28));opacity:0.92}
+.cut-piece-group rect.cut-part.invalid{stroke:#d85b55!important;stroke-width:2!important;filter:drop-shadow(0 0 8px rgba(216,91,85,0.7))}
+.cut-piece-group.selected rect.cut-part{stroke:#243c36!important;stroke-width:2.2!important}
+.rotate-badge{cursor:pointer;opacity:0.75;transition:opacity .15s,transform .15s}
+.rotate-badge:hover{opacity:1;transform:scale(1.15)}
+.cut-part{cursor:grab;transition:filter .12s}
+.cut-part:hover,.cut-part:focus{filter:brightness(.91);stroke:#315b48;stroke-width:1;outline:none}
+.cut-part.selected{stroke:#243c36;stroke-width:1.5;filter:brightness(.95)}
 
 .stock-row{grid-template-columns:1.3fr 1fr 1fr 20px}
 
