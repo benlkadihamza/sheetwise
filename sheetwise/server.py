@@ -138,16 +138,9 @@ class SheetwiseRequestHandler(BaseHTTPRequestHandler):
             parts = data.get("parts", [])
             kerf = float(data.get("kerf", 0.4))
 
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-                tmp_path = tmp.name
-
-            try:
-                generate_pdf_report(result, parts, kerf, tmp_path)
-                with open(tmp_path, "rb") as f:
-                    pdf_bytes = f.read()
-            finally:
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+            bio = io.BytesIO()
+            generate_pdf_report(result, parts, kerf, bio)
+            pdf_bytes = bio.getvalue()
 
             self.send_response(HTTPStatus.OK)
             self.send_cors_headers()
@@ -213,7 +206,7 @@ class SheetwiseRequestHandler(BaseHTTPRequestHandler):
 
 def run_server(
     port: Optional[int] = None,
-    host: str = "127.0.0.1",
+    host: str = "0.0.0.0",
     dist_dir: Optional[str] = None,
 ) -> None:
     """Run the Sheetwise HTTP server."""

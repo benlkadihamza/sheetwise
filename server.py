@@ -10,4 +10,4 @@ from sheetwise.server import run_server
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 4174))
-    run_server(port=port)
+    run_server(port=port, host="0.0.0.0")
