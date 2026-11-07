@@ -3,7 +3,7 @@ function createClientPdfBlob(result, parts, stock, kerf) {
   const sheets = (result && result.sheets) || [];
   if (!sheets.length) return new Blob(['%PDF-1.4\n%Empty\n%%EOF'], { type: 'application/pdf' });
   
-  const W = 792, H = 612; // Landscape Letter (points)
+  const W = 612, H = 792; // Portrait Letter (points)
   const colors = [
     [0.77, 0.83, 0.69],
     [0.91, 0.84, 0.68],
@@ -22,16 +22,16 @@ function createClientPdfBlob(result, parts, stock, kerf) {
     let stream = '';
 
     // Header banner
-    stream += '0.14 0.24 0.21 rg 36 572 720 2 re f\n';
-    stream += 'BT /F1 16 Tf 0.14 0.24 0.21 rg 36 580 Td (SHEETWISE CUTTING PLAN) Tj ET\n';
-    stream += 'BT /F1 11 Tf 0.16 0.22 0.18 rg 36 554 Td (Sheet ' + (idx + 1) + ' of ' + sheets.length + ': ' + escapePdf(s.label || 'Stock sheet') + ' - ' + sw + ' x ' + sh + ' cm) Tj ET\n';
-    stream += 'BT /F1 9 Tf 0.45 0.49 0.44 rg 36 538 Td (' + (s.pieces ? s.pieces.length : 0) + ' pieces placed  |  Saw kerf: ' + (Number(kerf || 0.4) * 10).toFixed(1) + ' mm) Tj ET\n';
+    stream += '0.14 0.24 0.21 rg 36 752 540 2 re f\n';
+    stream += 'BT /F1 16 Tf 0.14 0.24 0.21 rg 36 760 Td (SHEETWISE CUTTING PLAN) Tj ET\n';
+    stream += 'BT /F1 11 Tf 0.16 0.22 0.18 rg 36 734 Td (Sheet ' + (idx + 1) + ' of ' + sheets.length + ': ' + escapePdf(s.label || 'Stock sheet') + ' - ' + sw + ' x ' + sh + ' cm) Tj ET\n';
+    stream += 'BT /F1 9 Tf 0.45 0.49 0.44 rg 36 718 Td (' + (s.pieces ? s.pieces.length : 0) + ' pieces placed  |  Saw kerf: ' + (Number(kerf || 0.4) * 10).toFixed(1) + ' mm) Tj ET\n';
 
     // Sheet Diagram Area
-    const dwMax = 470, dhMax = 270;
+    const dwMax = 520, dhMax = 270;
     const scale = Math.min(dwMax / sw, dhMax / sh);
     const dw = sw * scale, dh = sh * scale;
-    const ox = 36, oy = 240;
+    const ox = 36, oy = 690 - dh;
 
     // Background sheet board
     stream += '0.91 0.92 0.87 rg 0.65 0.70 0.60 RG 1 w ' + ox.toFixed(1) + ' ' + oy.toFixed(1) + ' ' + dw.toFixed(1) + ' ' + dh.toFixed(1) + ' re B\n';
@@ -71,30 +71,47 @@ function createClientPdfBlob(result, parts, stock, kerf) {
     stream += 'BT /F1 8 Tf 0.55 0.59 0.51 rg ' + (ox + dw / 2 - 15).toFixed(1) + ' ' + (oy + dh + 4).toFixed(1) + ' Td (' + sw + ' cm) Tj ET\n';
     stream += 'BT /F1 8 Tf 0.55 0.59 0.51 rg ' + (ox + dw + 4).toFixed(1) + ' ' + (oy + dh / 2).toFixed(1) + ' Td (' + sh + ' cm) Tj ET\n';
 
-    // Parts Table on right side
-    const tx = 530, ty = 540;
-    stream += '0.94 0.96 0.93 rg 0.75 0.78 0.72 RG 0.5 w ' + tx + ' ' + (ty - 16) + ' 226 16 re B\n';
-    stream += 'BT /F1 8 Tf 0.2 0.25 0.2 rg ' + (tx + 6) + ' ' + (ty - 12) + ' Td (PART LABEL) Tj ' + (tx + 105) + ' ' + (ty - 12) + ' Td (W x H (cm)) Tj ' + (tx + 185) + ' ' + (ty - 12) + ' Td (QTY) Tj ET\n';
-
+    // Parts table below the sheet, with banded-edge marks above dimensions.
+    const tx = 36, ty = oy - 36;
+    const columns = [0, 126, 291, 465, 540];
+    const text = (x, y, value, size = 9, bold = false) => 'BT /' + (bold ? 'F2' : 'F1') + ' ' + size + ' Tf 0.20 0.28 0.25 rg 1 0 0 1 ' + x + ' ' + y + ' Tm (' + escapePdf(value) + ') Tj ET\n';
+    stream += text(tx, ty + 9, 'Parts to cut', 10, true);
+    stream += '0.93 0.94 0.91 rg ' + tx + ' ' + (ty - 20) + ' 540 20 re f\n';
+    ['LABEL', 'WIDTH (cm)', 'HEIGHT (cm)', 'QTY'].forEach((label, i) => {
+      stream += text(tx + columns[i] + 6, ty - 13, label, 9, true);
+    });
     const groups = {};
-    if (s.pieces) {
-      for (const p of s.pieces) {
-        const k = p.label + '|' + p.w + '|' + p.h;
-        if (!groups[k]) groups[k] = { label: p.label, w: p.w, h: p.h, count: 0 };
-        groups[k].count++;
-      }
+    for (const p of s.pieces || []) {
+      const e = p.edges || {};
+      const wb = Number(!!e.top) + Number(!!e.bottom);
+      const hb = Number(!!e.left) + Number(!!e.right);
+      const widthBands = p.turn ? hb : wb, heightBands = p.turn ? wb : hb;
+      const k = JSON.stringify([p.label, p.w, p.h, widthBands, heightBands]);
+      if (!groups[k]) groups[k] = {label: p.label, w: p.w, h: p.h, widthBands, heightBands, count: 0};
+      groups[k].count++;
     }
-
-    let rowY = ty - 32;
+    let rowTop = ty - 20;
+    stream += '0.74 0.77 0.72 RG 0.5 w ' + tx + ' ' + ty + ' m ' + (tx + 540) + ' ' + ty + ' l S\n';
+    stream += tx + ' ' + rowTop + ' m ' + (tx + 540) + ' ' + rowTop + ' l S\n';
     for (const g of Object.values(groups)) {
-      if (rowY < 40) break;
-      stream += '0.88 0.90 0.86 RG 0.5 w ' + tx + ' ' + (rowY - 4) + ' m ' + (tx + 226) + ' ' + (rowY - 4) + ' l S\n';
-      stream += 'BT /F1 8 Tf 0.18 0.22 0.18 rg ' + (tx + 6) + ' ' + rowY + ' Td (' + escapePdf(g.label).slice(0, 16) + ') Tj ' + (tx + 105) + ' ' + rowY + ' Td (' + g.w + ' x ' + g.h + ') Tj ' + (tx + 195) + ' ' + rowY + ' Td (' + g.count + ') Tj ET\n';
-      rowY -= 17;
+      if (rowTop - 24 < 40) break;
+      const rowY = rowTop - 17;
+      [g.label, g.w, g.h, g.count].forEach((value, i) => {
+        const x = tx + columns[i] + 6;
+        stream += text(x, rowY, value);
+        const bands = i === 1 ? g.widthBands : i === 2 ? g.heightBands : 0;
+        for (let n = 0; n < bands; n++) {
+          const y = rowY + 11 + n * 2;
+          stream += '0.20 0.28 0.25 RG 0.5 w ' + x + ' ' + y + ' m ' + (x + String(value).length * 5) + ' ' + y + ' l S\n';
+        }
+      });
+      rowTop -= 24;
+      stream += '0.74 0.77 0.72 RG 0.5 w ' + tx + ' ' + rowTop + ' m ' + (tx + 540) + ' ' + rowTop + ' l S\n';
     }
+    for (const x of columns) stream += (tx + x) + ' ' + ty + ' m ' + (tx + x) + ' ' + rowTop + ' l S\n';
 
     // Footer
-    stream += '0.85 0.88 0.83 RG 0.5 w 36 25 720 0.1 re S\n';
+    stream += '0.85 0.88 0.83 RG 0.5 w 36 25 540 0.1 re S\n';
     stream += 'BT /F1 7 Tf 0.55 0.59 0.51 rg 36 15 Td (Sheetwise Cut Planner  -  Page ' + (idx + 1) + ' of ' + sheets.length + ') Tj ET\n';
 
     pagesData.push(stream);
@@ -122,7 +139,7 @@ function createClientPdfBlob(result, parts, stock, kerf) {
 
   for (const item of streamBodies) {
     out += item.sId + ' 0 obj\n<< /Length ' + item.stream.length + ' >>\nstream\n' + item.stream + '\nendstream\nendobj\n';
-    out += item.pId + ' 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Contents ' + item.sId + ' 0 R /Resources << /Font << /F1 3 0 R >> >> >>\nendobj\n';
+    out += item.pId + ' 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Contents ' + item.sId + ' 0 R /Resources << /Font << /F1 3 0 R /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> >>\nendobj\n';
   }
 
   // Calculate object byte offsets

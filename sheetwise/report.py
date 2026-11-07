@@ -149,6 +149,7 @@ def generate_html_report(
             page-break-after: always;
             border-radius: 6px;
         }}
+        @page {{ size: letter portrait; }}
         @media print {{
             body {{ background: transparent; padding: 0; }}
             .report-page {{ box-shadow: none; margin: 0; padding: 20px; page-break-after: always; }}
@@ -217,7 +218,7 @@ def generate_pdf_report(
 ) -> None:
     """Generate a PDF cutting plan report using ReportLab."""
     try:
-        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.lib.pagesizes import letter
         from reportlab.lib import colors
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -234,7 +235,7 @@ def generate_pdf_report(
 
     doc = SimpleDocTemplate(
         output_path,
-        pagesize=landscape(letter),
+        pagesize=letter,
         leftMargin=36,
         rightMargin=36,
         topMargin=36,
@@ -352,30 +353,43 @@ def generate_pdf_report(
         story.append(d)
         story.append(Spacer(1, 10))
 
-        # Parts table
-        groups: Dict[str, Dict[str, Any]] = {}
+        # Match the report table, including banded-edge marks above dimensions.
+        story.append(Paragraph("Parts to cut", h2_style))
+        groups = {}
         for p in pieces:
-            pw = float(p["w"])
-            ph = float(p["h"])
-            plabel = str(p.get("label", "Part"))
-            key = f"{plabel}|{pw:.2f}|{ph:.2f}"
+            e = p.get("edges") or {}
+            wb = int(bool(e.get("top"))) + int(bool(e.get("bottom")))
+            hb = int(bool(e.get("left"))) + int(bool(e.get("right")))
+            width_bands, height_bands = (hb, wb) if p.get("turn") else (wb, hb)
+            key = (str(p.get("label", "Part")), float(p["w"]), float(p["h"]), width_bands, height_bands)
             if key not in groups:
-                groups[key] = {"label": plabel, "w": pw, "h": ph, "count": 0}
-            groups[key]["count"] += 1
+                groups[key] = 0
+            groups[key] += 1
 
-        table_data = [["PART LABEL", "WIDTH (cm)", "HEIGHT (cm)", "QUANTITY"]]
-        for g in groups.values():
-            table_data.append([g["label"], fmt_dim(g["w"]), fmt_dim(g["h"]), str(g["count"])])
+        def measurement(value, bands):
+            label = fmt_dim(value)
+            drawing = Drawing(100, 18)
+            drawing.add(String(0, 1, label, fontSize=9, fillColor=colors.HexColor("#334b43")))
+            for n in range(bands):
+                drawing.add(Line(0, 12 + n * 2, len(label) * 5, 12 + n * 2,
+                                 strokeWidth=0.5, strokeColor=colors.HexColor("#334b43")))
+            return drawing
 
-        t = Table(table_data, colWidths=[200, 100, 100, 80])
+        table_data = [["LABEL", "WIDTH (cm)", "HEIGHT (cm)", "QTY"]]
+        for (label, w, h, wb, hb), count in groups.items():
+            table_data.append([label, measurement(w, wb), measurement(h, hb), str(count)])
+
+        t = Table(table_data, colWidths=[126, 165, 174, 75], repeatRows=1)
         t.setStyle(
             TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f5ee")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf0e8")),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e1e4da")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#bdc4b8")),
+                ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#334b43")),
             ])
         )
         story.append(t)

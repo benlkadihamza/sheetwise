@@ -1,0 +1,53 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 1450 >>
+stream
+0.14 0.24 0.21 rg 36 752 540 2 re f
+BT /F1 16 Tf 0.14 0.24 0.21 rg 36 760 Td (SHEETWISE CUTTING PLAN) Tj ET
+BT /F1 11 Tf 0.16 0.22 0.18 rg 36 734 Td (Sheet 1 of 1: Stock sheet - 244 x 122 cm) Tj ET
+BT /F1 9 Tf 0.45 0.49 0.44 rg 36 718 Td (2 pieces placed  |  Saw kerf: 4.0 mm) Tj ET
+0.91 0.92 0.87 rg 0.65 0.70 0.60 RG 1 w 36.0 430.0 520.0 260.0 re B
+0.77 0.83 0.69 rg 1 1 1 RG 0.5 w 36.0 476.9 127.9 213.1 re B
+BT /F1 8 Tf 0.20 0.28 0.22 rg 40.0 584.4 Td (Side) Tj ET
+BT /F1 7 Tf 0.33 0.40 0.30 rg 40.0 575.4 Td (60x100) Tj ET
+0.77 0.83 0.69 rg 1 1 1 RG 0.5 w 164.7 604.8 170.5 85.2 re B
+BT /F1 8 Tf 0.20 0.28 0.22 rg 168.7 648.4 Td (Shelf) Tj ET
+BT /F1 7 Tf 0.33 0.40 0.30 rg 168.7 639.4 Td (80x40) Tj ET
+BT /F1 8 Tf 0.55 0.59 0.51 rg 281.0 694.0 Td (244 cm) Tj ET
+BT /F1 8 Tf 0.55 0.59 0.51 rg 560.0 560.0 Td (122 cm) Tj ET
+0.94 0.96 0.93 rg 0.75 0.78 0.72 RG 0.5 w 36 390 540 16 re B
+BT /F1 8 Tf 0.2 0.25 0.2 rg 42 394 Td (PART LABEL) Tj 1 0 0 1 336 394 Tm (W x H (cm)) Tj 1 0 0 1 526 394 Tm (QTY) Tj ET
+0.88 0.90 0.86 RG 0.5 w 36 370 m 576 370 l S
+BT /F1 8 Tf 0.18 0.22 0.18 rg 42 374 Td (Side) Tj 1 0 0 1 336 374 Tm (60 x 100) Tj 1 0 0 1 526 374 Tm (1) Tj ET
+0.88 0.90 0.86 RG 0.5 w 36 353 m 576 353 l S
+BT /F1 8 Tf 0.18 0.22 0.18 rg 42 357 Td (Shelf) Tj 1 0 0 1 336 357 Tm (80 x 40) Tj 1 0 0 1 526 357 Tm (1) Tj ET
+0.85 0.88 0.83 RG 0.5 w 36 25 540 0.1 re S
+BT /F1 7 Tf 0.55 0.59 0.51 rg 36 15 Td (Sheetwise Cut Planner  -  Page 1 of 1) Tj ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001687 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1813
+%%EOF
