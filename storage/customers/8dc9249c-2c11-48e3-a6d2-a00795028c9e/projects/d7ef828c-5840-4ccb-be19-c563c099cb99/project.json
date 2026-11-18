@@ -1,0 +1,10 @@
+{
+  "id": "d7ef828c-5840-4ccb-be19-c563c099cb99",
+  "customer_id": "8dc9249c-2c11-48e3-a6d2-a00795028c9e",
+  "name": "cuisine",
+  "description": null,
+  "status": "active",
+  "created_at": "2026-11-17T19:02:54.548820+00:00",
+  "updated_at": "2026-11-17T19:04:35.797019+00:00",
+  "customer_name": "cuisine"
+}

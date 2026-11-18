@@ -19,6 +19,9 @@ from .report import generate_html_report, generate_pdf_report
 from .server import SheetwiseRequestHandler, run_server
 from .svg import render_sheet_svg
 from .units import project_in_centimeters
+from .adapter import ProjectDataAdapter
+from .db import CustomerRepository, ProjectRepository, CuttingRecordRepository, init_db
+from .storage import StorageManager
 
 __version__ = "1.0.0"
 

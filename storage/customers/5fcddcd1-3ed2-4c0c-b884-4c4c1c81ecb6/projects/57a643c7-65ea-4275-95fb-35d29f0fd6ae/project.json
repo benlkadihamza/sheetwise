@@ -1,0 +1,10 @@
+{
+  "id": "57a643c7-65ea-4275-95fb-35d29f0fd6ae",
+  "customer_id": "5fcddcd1-3ed2-4c0c-b884-4c4c1c81ecb6",
+  "name": "Hello",
+  "description": null,
+  "status": "active",
+  "created_at": "2026-11-17T19:36:32.728752+00:00",
+  "updated_at": "2026-11-17T19:36:38.534624+00:00",
+  "customer_name": "Hello"
+}

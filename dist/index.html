@@ -1,8 +1,348 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sheetwise — Make every sheet count</title><link rel="icon" type="image/png" sizes="32x32" href="favicon.png"><link rel="icon" type="image/x-icon" href="favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#243c36"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Sheetwise"><link rel="stylesheet" href="style.css"></head><body>
-<header><a class="brand" href="#"><img src="icon-192.png" alt="Sheetwise Logo" class="brand-icon"> sheetwise<span class="beta">BETA</span></a><nav>Cut planner <span> / </span> <b>Your workshop, optimized.</b></nav></header>
-<main><div class="heading"><div class="eyebrow">LESS WASTE. MORE POSSIBILITY.</div><h1>Make every sheet count<span>.</span></h1><p>From your parts list to a smarter cutting plan.</p></div>
-<div class="workspace"><aside><div class="panel"><div class="sectionhead"><h2><span>01</span> Stock sheets</h2><button id="addstock" class="text">+ Add sheet</button></div><p class="hint">Enter stock dimensions in cm. The parts determine how many sheets are required.</p><div class="labels stock-row"><span>MATERIAL</span><span>WIDTH (cm)</span><span>HEIGHT (cm)</span><span></span></div><div class="labels stock-row"><span>MATERIAL</span><span>WIDTH (cm)</span><span>HEIGHT (cm)</span><span></span></div><div id="stocks"></div></div>
-<div class="panel"><div class="sectionhead"><h2><span>02</span> Parts to cut</h2><div><button id="clearparts" class="text" style="margin-right:8px;color:#9b5a54">Clear all</button><button id="addpart" class="text">+ Add part</button></div></div><p class="hint">Pieces are arranged in any order to fill each sheet. Quantities may continue onto the next sheet.</p><div class="labels"><span>LABEL</span><span>WIDTH (cm)</span><span>HEIGHT (cm)</span><span>QTY</span><span></span></div><div id="parts"></div><div class="partfoot" id="partcount"></div></div>
-<div class="panel"><h2><span>03</span> Cutting settings</h2><div class="setting"><label for="kerf">Saw kerf <small>Width removed by each cut</small></label><div><input id="kerf" type="number" min="0" max="100" step="0.1" value="4"> <span class="unit">mm</span></div></div><div class="setting"><label for="rotate">Allow 90° rotation for all parts<small>Utilization is optimized in both modes. Off: keep width × height. On: also try 90° rotations.</small></label><input id="rotate" type="checkbox" role="switch"></div></div>
-<button id="run" class="primary">Maximize material utilization <span>→</span></button><p id="error" role="alert"></p><p class="local">◈ Your project stays in this browser.</p></aside>
-<section class="results"><div class="resulthead"><div><div class="eyebrow">YOUR CUTTING PLAN</div><h2>A place for every piece.</h2></div><button id="print">↓ Print / PDF</button></div><div id="status" role="status"></div><div id="unplaced" class="unplaced-panel" hidden aria-live="polite"></div><div class="stats" id="stats"></div><div class="planbar"><div id="sheetnav"></div><span>DIMENSIONS IN CM · KERF IN MM</span></div><div id="diagram"></div><p id="remnant-info" class="remnant-info" role="status">Hover over a part to see dimensions · Drag to move · Double-click or press R to rotate.</p><div id="legend"></div><div id="banding" class="panel" aria-live="polite"></div><div class="note"><span>✦</span><div><strong>A little planning. A lot less waste.</strong><p>Remnants stay along the right or bottom side, with parts packed toward the top-left; saw kerf remains between cuts. Each board is filled with individual pieces that fit before opening another board. Part order does not matter, and copies of a part can be split across sheets. Layouts use straight guillotine cuts and account for saw kerf. The optimizer compares multiple part orders and stock sizes, prioritizes placing all requested parts, then selects the layout using the least stock area. It finds the best layout searched; a global optimum is not guaranteed.</p></div></div></section></div></main><footer>Built for the way you make. <span>SHEETWISE / CUT SMARTER</span></footer><div id="report-modal" class="report-modal" hidden role="dialog" aria-modal="true" aria-label="Cutting Plan Report"><div class="report-modal-backdrop" id="modal-backdrop"></div><div class="report-modal-content"><div class="report-modal-header"><div class="report-modal-info"><h3>Cutting Plan Report</h3><div class="modal-view-tabs"><button id="tab-report-view" class="tab-btn active">Review Plan</button><button id="tab-pdf-view" class="tab-btn">View PDF</button></div></div><div class="report-modal-actions"><button id="modal-share-btn" class="modal-btn share-btn" title="Share via AirDrop, Save to Files, etc."><span>📤</span> Share PDF</button><a id="modal-download-btn" class="modal-btn primary-action" href="#" download="sheetwise_cutting_plan.pdf" target="_blank"><span>↓</span> Download PDF</a><button id="modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button></div></div><div id="report-modal-body" class="report-modal-body"></div><div id="report-modal-pdf" class="report-modal-pdf" hidden><iframe id="pdf-preview-frame" class="pdf-preview-frame" title="PDF Preview"></iframe></div></div></div><script src="optimizer.js"></script><script src="banding.js"></script><script src="units.js"></script><script src="pdf.js"></script><script src="app.js?v=share-pdf-2026"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sheetwise — Customer & Cutting Management</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#243c36">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sheetwise">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="management.css">
+</head>
+<body>
+  <!-- Global Top Header with Brand & Navigation -->
+  <header>
+    <a class="brand" href="#" id="brand-home-link" title="Customers Dashboard">
+      <img src="icon-192.png" alt="Sheetwise Logo" class="brand-icon"> sheetwise<span class="beta">BETA</span>
+    </a>
+    <div class="header-actions">
+      <button id="btn-top-quick-cut" class="btn-quick-cut" title="Open wood cutting without a project">
+        <span>✂️</span> Quick Cutting
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================================================================= -->
+    <!-- PAGE ONE: CUSTOMERS DASHBOARD                                     -->
+    <!-- ================================================================= -->
+    <div id="view-customers" class="page-view">
+      <div class="heading">
+        <div class="eyebrow">MANAGEMENT &amp; CLIENT OVERVIEW</div>
+        <h1>Customers Dashboard<span>.</span></h1>
+        <p>Manage your clients, view their ongoing projects, and record quick cutting operations.</p>
+      </div>
+
+      <div class="dashboard-bar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="customer-search-input" placeholder="Search customers by name or phone…" aria-label="Search customers">
+        </div>
+        <div class="dashboard-actions">
+          <button id="btn-add-customer" class="btn-primary">
+            <span>+</span> Add Customer
+          </button>
+          <button id="btn-dashboard-quick-cut" class="btn-secondary" style="border-color:#315b48;color:#315b48;">
+            <span>✂️</span> Quick Cutting
+          </button>
+        </div>
+      </div>
+
+      <div id="customers-grid" class="customers-grid">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE TWO: CUSTOMER PROFILE & PROJECTS                             -->
+    <!-- ================================================================= -->
+    <div id="view-profile" class="page-view" hidden>
+      <div style="margin-bottom:18px">
+        <button id="btn-back-to-customers" class="btn-secondary" style="font-size:12px;padding:6px 12px">
+          ← Back to Customers
+        </button>
+      </div>
+
+      <div class="profile-header-card">
+        <div class="profile-info">
+          <h2 id="profile-name">Customer Name</h2>
+          <div class="profile-contacts">
+            <span id="profile-phone">📞 Phone</span>
+            <span id="profile-email">✉️ Email</span>
+            <span id="profile-address">📍 Address</span>
+          </div>
+        </div>
+
+        <div class="profile-stats">
+          <div class="profile-stat-box">
+            <small>Projects</small>
+            <strong id="stat-projects-count">0</strong>
+          </div>
+          <div class="profile-stat-box">
+            <small>Quick Cuts</small>
+            <strong id="stat-quick-count">0</strong>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button id="btn-edit-profile-customer" class="btn-secondary">
+            ✏️ Edit Customer
+          </button>
+          <button id="btn-profile-new-project" class="btn-primary">
+            + New Project
+          </button>
+        </div>
+      </div>
+
+      <div class="activity-card">
+        <div class="activity-header">
+          <h3>Unified Activity &amp; Records</h3>
+          <div class="activity-controls">
+            <input type="text" id="activity-search-input" placeholder="Search records…" style="width:200px">
+            <select id="activity-sort-select">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="customer-activity-list" class="activity-list">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE THREE: WOOD CUTTING INTERFACE                                -->
+    <!-- ================================================================= -->
+    <div id="view-cutting" class="page-view" hidden>
+      <!-- Context Top Bar -->
+      <div class="cutting-context-bar">
+        <div class="cutting-context-info">
+          <span id="context-badge-tag" class="context-tag quick">✂️ Quick Cutting</span>
+          <span id="context-workspace-title" class="cutting-context-title">Unassigned Quick Cut</span>
+          <div id="quick-name-container" class="quick-name-wrapper" style="margin-left:4px;">
+            <input type="text" id="quick-record-name-input" class="customer-select-input" placeholder="Cutting record name (optional)…" style="min-width:210px;">
+          </div>
+          <div id="quick-customer-selector-container" class="customer-select-wrapper">
+            <input type="text" id="quick-customer-input" class="customer-select-input" placeholder="Assign customer (optional)…" autocomplete="off">
+            <ul id="quick-customer-suggestions" class="customer-suggestions-list" hidden></ul>
+          </div>
+        </div>
+        <div class="cutting-context-actions">
+          <span id="save-status-indicator" class="save-status-indicator idle">● Unsaved</span>
+          <button id="btn-register-action" class="btn-primary">Register Cutting</button>
+          <button id="btn-exit-cutting" class="btn-secondary">Close</button>
+        </div>
+      </div>
+
+      <!-- Preserved Original Cutting Workspace -->
+      <div class="heading">
+        <div class="eyebrow">LESS WASTE. MORE POSSIBILITY.</div>
+        <h1>Make every sheet count<span>.</span></h1>
+        <p>From your parts list to a smarter cutting plan.</p>
+      </div>
+
+      <div class="workspace">
+        <aside>
+          <div class="panel">
+            <div class="sectionhead">
+              <h2><span>01</span> Stock sheets</h2>
+              <button id="addstock" class="text">+ Add sheet</button>
+            </div>
+            <p class="hint">Enter stock dimensions in cm. The parts determine how many sheets are required.</p>
+            <div class="labels stock-row"><span>MATERIAL</span><span>WIDTH (cm)</span><span>HEIGHT (cm)</span><span></span></div>
+            <div class="labels stock-row"><span>MATERIAL</span><span>WIDTH (cm)</span><span>HEIGHT (cm)</span><span></span></div>
+            <div id="stocks"></div>
+          </div>
+
+          <div class="panel">
+            <div class="sectionhead">
+              <h2><span>02</span> Parts to cut</h2>
+              <div>
+                <button id="clearparts" class="text" style="margin-right:8px;color:#9b5a54">Clear all</button>
+                <button id="addpart" class="text">+ Add part</button>
+              </div>
+            </div>
+            <p class="hint">Pieces are arranged in any order to fill each sheet. Quantities may continue onto the next sheet.</p>
+            <div class="labels"><span>LABEL</span><span>WIDTH (cm)</span><span>HEIGHT (cm)</span><span>QTY</span><span></span></div>
+            <div id="parts"></div>
+            <div class="partfoot" id="partcount"></div>
+          </div>
+
+          <div class="panel">
+            <h2><span>03</span> Cutting settings</h2>
+            <div class="setting">
+              <label for="kerf">Saw kerf <small>Width removed by each cut</small></label>
+              <div><input id="kerf" type="number" min="0" max="100" step="0.1" value="4"> <span class="unit">mm</span></div>
+            </div>
+            <div class="setting">
+              <label for="rotate">Allow 90° rotation for all parts<small>Utilization is optimized in both modes. Off: keep width × height. On: also try 90° rotations.</small></label>
+              <input id="rotate" type="checkbox" role="switch">
+            </div>
+          </div>
+
+          <button id="run" class="primary">Maximize material utilization <span>→</span></button>
+          <p id="error" role="alert"></p>
+          <p class="local">◈ Your project stays in this browser.</p>
+        </aside>
+
+        <section class="results">
+          <div class="resulthead">
+            <div>
+              <div class="eyebrow">YOUR CUTTING PLAN</div>
+              <h2>A place for every piece.</h2>
+            </div>
+            <button id="print">↓ Print / PDF</button>
+          </div>
+          <div id="status" role="status"></div>
+          <div id="unplaced" class="unplaced-panel" hidden aria-live="polite"></div>
+          <div class="stats" id="stats"></div>
+          <div class="planbar">
+            <div id="sheetnav"></div>
+            <span>DIMENSIONS IN CM · KERF IN MM</span>
+          </div>
+          <div id="diagram"></div>
+          <p id="remnant-info" class="remnant-info" role="status">Hover over a part to see dimensions · Drag to move · Double-click or press R to rotate.</p>
+          <div id="legend"></div>
+          <div id="banding" class="panel" aria-live="polite"></div>
+          <div class="note">
+            <span>✦</span>
+            <div>
+              <strong>A little planning. A lot less waste.</strong>
+              <p>Remnants stay along the right or bottom side, with parts packed toward the top-left; saw kerf remains between cuts. Each board is filled with individual pieces that fit before opening another board. Part order does not matter, and copies of a part can be split across sheets. Layouts use straight guillotine cuts and account for saw kerf. The optimizer compares multiple part orders and stock sizes, prioritizes placing all requested parts, then selects the layout using the least stock area. It finds the best layout searched; a global optimum is not guaranteed.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>Built for the way you make. <span>SHEETWISE / CUT SMARTER</span></footer>
+
+  <!-- Original Report Modal -->
+  <div id="report-modal" class="report-modal" hidden role="dialog" aria-modal="true" aria-label="Cutting Plan Report">
+    <div class="report-modal-backdrop" id="modal-backdrop"></div>
+    <div class="report-modal-content">
+      <div class="report-modal-header">
+        <div class="report-modal-info">
+          <h3>Cutting Plan Report</h3>
+          <div class="modal-view-tabs">
+            <button id="tab-report-view" class="tab-btn active">Review Plan</button>
+            <button id="tab-pdf-view" class="tab-btn">View PDF</button>
+          </div>
+        </div>
+        <div class="report-modal-actions">
+          <button id="modal-share-btn" class="modal-btn share-btn" title="Share via AirDrop, Save to Files, etc."><span>📤</span> Share PDF</button>
+          <a id="modal-download-btn" class="modal-btn primary-action" href="#" download="sheetwise_cutting_plan.pdf" target="_blank"><span>↓</span> Download PDF</a>
+          <button id="modal-close-btn" class="modal-close-btn" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div id="report-modal-body" class="report-modal-body"></div>
+      <div id="report-modal-pdf" class="report-modal-pdf" hidden>
+        <iframe id="pdf-preview-frame" class="pdf-preview-frame" title="PDF Preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Customer Modal -->
+  <div id="customer-modal" class="sw-modal" hidden role="dialog" aria-modal="true">
+    <div class="sw-modal-backdrop" id="cust-modal-backdrop"></div>
+    <div class="sw-modal-content">
+      <div class="sw-modal-header">
+        <h3 id="customer-modal-title">Add New Customer</h3>
+        <button type="button" id="cust-modal-close" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+      <form id="customer-modal-form" autocomplete="off">
+        <div class="sw-modal-body">
+          <div class="sw-form-group">
+            <label for="cust-form-name">Full Name *</label>
+            <input type="text" id="cust-form-name" required placeholder="e.g. John Doe" autocorrect="off" autocapitalize="words">
+          </div>
+          <div class="sw-form-group">
+            <label for="cust-form-phone">Phone Number</label>
+            <input type="tel" id="cust-form-phone" placeholder="e.g. +1 555-0199" inputmode="tel">
+          </div>
+          <div class="sw-form-group">
+            <label for="cust-form-email">Email</label>
+            <input type="email" id="cust-form-email" placeholder="e.g. john@example.com" inputmode="email" autocorrect="off" autocapitalize="none">
+          </div>
+          <div class="sw-form-group">
+            <label for="cust-form-address">Address</label>
+            <input type="text" id="cust-form-address" placeholder="e.g. 123 Timber Rd, Portland, OR">
+          </div>
+          <div class="sw-form-group">
+            <label for="cust-form-notes">Notes</label>
+            <textarea id="cust-form-notes" placeholder="Additional details, preferences, etc." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="sw-modal-footer">
+          <button type="button" id="cust-modal-cancel" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New Project Modal -->
+  <div id="new-project-modal" class="sw-modal" hidden role="dialog" aria-modal="true">
+    <div class="sw-modal-backdrop" id="proj-modal-backdrop"></div>
+    <div class="sw-modal-content">
+      <div class="sw-modal-header">
+        <h3>+ New Project</h3>
+        <button id="proj-modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <form id="new-project-modal-form">
+        <div class="sw-modal-body">
+          <div class="sw-form-group">
+            <label for="project-name-input">Project Name *</label>
+            <input type="text" id="project-name-input" required placeholder="e.g. Kitchen Cabinets Phase 1">
+          </div>
+          <div class="sw-form-group">
+            <label for="project-desc-input">Description (optional)</label>
+            <textarea id="project-desc-input" placeholder="Project notes, material requirements, etc."></textarea>
+          </div>
+        </div>
+        <div class="sw-modal-footer">
+          <button type="button" id="proj-modal-cancel" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Create &amp; Open Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dynamic Confirmation Dialog Modal (Existing Customer Association / New Customer Confirmation) -->
+  <div id="confirm-dialog-modal" class="sw-modal" hidden role="dialog" aria-modal="true">
+    <div class="sw-modal-backdrop"></div>
+    <div class="sw-modal-content">
+      <div class="sw-modal-header">
+        <h3 id="confirm-dialog-title">Confirmation</h3>
+      </div>
+      <div class="sw-modal-body">
+        <p id="confirm-dialog-message" style="margin:0 0 12px;font-size:14px;color:var(--ink)"></p>
+        <div id="confirm-dialog-target-name" style="font-weight:700;font-size:16px;color:var(--green);padding:10px 14px;background:#f3f7f0;border-radius:6px;border:1px solid #dbe6d7"></div>
+      </div>
+      <div class="sw-modal-footer">
+        <button type="button" id="btn-cancel-action" class="btn-secondary">Cancel</button>
+        <button type="button" id="btn-confirm-action" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Cutting Engine Scripts (Untouched) -->
+  <script src="optimizer.js"></script>
+  <script src="banding.js"></script>
+  <script src="units.js"></script>
+  <script src="pdf.js"></script>
+  <script src="app.js?v=share-pdf-2026"></script>
+  <!-- Customer & Project Management Integration Script -->
+  <script src="management.js"></script>
+</body>
+</html>
