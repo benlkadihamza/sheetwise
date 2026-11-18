@@ -192,6 +192,19 @@ def init_db(db_path: Optional[str] = None) -> None:
                     conn.execute("ALTER TABLE cutting_records ADD COLUMN name TEXT;")
                 now_str = datetime.now(timezone.utc).isoformat()
                 conn.execute("INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s);", (2, now_str))
+
+            if current_version < 3:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                """)
+                now_str = datetime.now(timezone.utc).isoformat()
+                conn.execute("INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s);", (3, now_str))
         else:
             # SQLite migrations
             conn.execute("""
@@ -269,6 +282,19 @@ def init_db(db_path: Optional[str] = None) -> None:
                     conn.execute("ALTER TABLE cutting_records ADD COLUMN name TEXT;")
                 now_str = datetime.now(timezone.utc).isoformat()
                 conn.execute("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?);", (2, now_str))
+
+            if current_version < 3:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                """)
+                now_str = datetime.now(timezone.utc).isoformat()
+                conn.execute("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?);", (3, now_str))
 
 
 def utc_now() -> str:
@@ -586,3 +612,41 @@ class CuttingRecordRepository:
             combined = projects + quick_cuts
             combined.sort(key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)
             return combined
+
+
+# User Repository for Auth
+class UserRepository:
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path
+
+    def create(self, name: str, email: str, password_hash: str) -> Dict[str, Any]:
+        uid = str(uuid.uuid4())
+        now = utc_now()
+        name = name.strip()
+        email = email.strip().lower()
+
+        with get_connection(self.db_path) as conn:
+            conn.execute("""
+                INSERT INTO users (id, name, email, password_hash, created_at)
+                VALUES (?, ?, ?, ?, ?);
+            """, (uid, name, email, password_hash, now))
+        return self.get_by_id(uid) # type: ignore
+
+    def get_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        with get_connection(self.db_path) as conn:
+            cur = conn.execute("SELECT id, name, email, created_at FROM users WHERE id = ?;", (user_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def get_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        with get_connection(self.db_path) as conn:
+            cur = conn.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?);", (email.strip(),))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def count(self) -> int:
+        with get_connection(self.db_path) as conn:
+            cur = conn.execute("SELECT COUNT(*) AS cnt FROM users;")
+            row = cur.fetchone()
+            return row["cnt"] if (row and "cnt" in row) else (row[0] if row else 0)
+

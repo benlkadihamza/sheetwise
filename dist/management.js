@@ -11,7 +11,8 @@
 
   // State for Navigation and Current Context
   const AppState = {
-    currentView: 'customers', // 'customers' | 'profile' | 'cutting'
+    currentUser: null,        // Logged-in user object {id, name, email}
+    currentView: 'customers', // 'login' | 'customers' | 'profile' | 'cutting'
     currentCustomer: null,    // Customer object currently opened in profile
     currentProject: null,     // Project object if working on a project
     currentQuickRecord: null, // Quick record object if editing an existing quick record
@@ -133,26 +134,46 @@
       });
       if (!res.ok) throw new Error('Failed to save project record');
       return await res.json();
+    },
+    async login(username, password) {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email: username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      return data;
     }
   };
 
   // Router & Navigation
   function navigateTo(view, params = {}) {
+    // If not logged in and not trying to login, show login view
+    if (!AppState.currentUser && view !== 'login') {
+      view = 'login';
+    }
+
     AppState.currentView = view;
     // Update active nav links
     document.querySelectorAll('.nav-link').forEach(link => {
       link.classList.toggle('active', link.dataset.target === view);
     });
 
+    const vLogin = dom.id('view-login');
     const vCustomers = dom.id('view-customers');
     const vProfile = dom.id('view-profile');
     const vCutting = dom.id('view-cutting');
 
+    dom.hide(vLogin);
     dom.hide(vCustomers);
     dom.hide(vProfile);
     dom.hide(vCutting);
 
-    if (view === 'customers') {
+    if (view === 'login') {
+      dom.show(vLogin);
+      setupAuthView();
+    } else if (view === 'customers') {
       dom.show(vCustomers);
       loadCustomersDashboard();
     } else if (view === 'profile') {
@@ -164,6 +185,94 @@
       dom.show(vCutting);
       setupCuttingInterface(params);
     }
+  }
+
+  // -------------------------------------------------------------
+  // AUTH VIEW: LOGIN
+  // -------------------------------------------------------------
+  function setupAuthView() {
+    dom.val(dom.id('auth-username'), '');
+    dom.val(dom.id('auth-password'), '');
+    const errEl = dom.id('auth-error');
+    if (errEl) {
+      errEl.textContent = '';
+      dom.hide(errEl);
+    }
+  }
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    const username = (dom.val(dom.id('auth-username')) || '').trim();
+    const password = dom.val(dom.id('auth-password')) || '';
+    const rememberMe = dom.id('auth-remember') ? dom.id('auth-remember').checked : true;
+    const errEl = dom.id('auth-error');
+    const btnSubmit = dom.id('btn-auth-submit');
+
+    if (!username || !password) {
+      showAuthError('Please fill in both username and password.');
+      return;
+    }
+
+    try {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Signing in…';
+      if (errEl) dom.hide(errEl);
+
+      const res = await API.login(username, password);
+
+      // Successful auth
+      AppState.currentUser = res.user;
+      if (rememberMe) {
+        try {
+          localStorage.setItem('sheetwise_user', JSON.stringify(res.user));
+          sessionStorage.removeItem('sheetwise_user');
+        } catch {}
+      } else {
+        try {
+          sessionStorage.setItem('sheetwise_user', JSON.stringify(res.user));
+          localStorage.removeItem('sheetwise_user');
+        } catch {}
+      }
+
+      updateUserWidget();
+      navigateTo('customers');
+    } catch (err) {
+      showAuthError(err.message);
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Sign In →';
+    }
+  }
+
+  function showAuthError(msg) {
+    const errEl = dom.id('auth-error');
+    if (errEl) {
+      errEl.textContent = msg;
+      dom.show(errEl);
+    }
+  }
+
+  function updateUserWidget() {
+    const widget = dom.id('user-profile-widget');
+    const nameEl = dom.id('user-display-name');
+    if (!widget) return;
+
+    if (AppState.currentUser) {
+      dom.text(nameEl, `👤 ${AppState.currentUser.name || AppState.currentUser.username || 'Admin'}`);
+      dom.show(widget);
+    } else {
+      dom.hide(widget);
+    }
+  }
+
+  function handleLogout() {
+    AppState.currentUser = null;
+    try {
+      localStorage.removeItem('sheetwise_user');
+      sessionStorage.removeItem('sheetwise_user');
+    } catch {}
+    updateUserWidget();
+    navigateTo('login');
   }
 
   // -------------------------------------------------------------
@@ -921,8 +1030,27 @@
 
     initCustomerAutocomplete();
 
-    // Default view: Customers Dashboard
-    navigateTo('customers');
+    // Auth form trigger
+    const authForm = dom.id('auth-form');
+    if (authForm) authForm.onsubmit = handleAuthSubmit;
+    const btnLogout = dom.id('btn-logout');
+    if (btnLogout) btnLogout.onclick = handleLogout;
+
+    // Load persisted session if available (check localStorage, then sessionStorage)
+    try {
+      const savedUser = localStorage.getItem('sheetwise_user') || sessionStorage.getItem('sheetwise_user');
+      if (savedUser) {
+        AppState.currentUser = JSON.parse(savedUser);
+      }
+    } catch {}
+    updateUserWidget();
+
+    // Default view: Customers Dashboard (or Login if unauthenticated)
+    if (AppState.currentUser) {
+      navigateTo('customers');
+    } else {
+      navigateTo('login');
+    }
   });
 
 })();

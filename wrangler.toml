@@ -1,10 +1,10 @@
 name = "sheetwise"
+main = "worker.js"
 compatibility_date = "2024-04-03"
 
-# Cloudflare Pages / Workers static assets configuration
 [assets]
 directory = "./dist"
+binding = "ASSETS"
 
-# If deploying as a Python Cloudflare Worker:
-# main = "worker.py"
-# compatibility_flags = ["python_workers"]
+[vars]
+DATABASE_URL = "postgresql://neondb_owner:npg_7NJG1iZbqcBr@ep-late-surf-bd0w382s-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"

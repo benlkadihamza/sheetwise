@@ -23,6 +23,10 @@
       <img src="icon-192.png" alt="Sheetwise Logo" class="brand-icon"> sheetwise<span class="beta">BETA</span>
     </a>
     <div class="header-actions">
+      <div id="user-profile-widget" class="user-profile-badge" hidden>
+        <span id="user-display-name">👤 User</span>
+        <button id="btn-logout" class="btn-logout-small" title="Sign out">Log out</button>
+      </div>
       <button id="btn-top-quick-cut" class="btn-quick-cut" title="Open wood cutting without a project">
         <span>✂️</span> Quick Cutting
       </button>
@@ -30,6 +34,44 @@
   </header>
 
   <main>
+    <!-- ================================================================= -->
+    <!-- AUTH VIEW: LOGIN PAGE                                             -->
+    <!-- ================================================================= -->
+    <div id="view-login" class="page-view" hidden>
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <img src="icon-192.png" alt="Sheetwise Logo" class="auth-logo">
+            <h2 id="auth-title">Welcome to Sheetwise</h2>
+            <p id="auth-subtitle">Sign in to manage your workshop, clients, and cutting plans.</p>
+          </div>
+
+          <form id="auth-form" autocomplete="on">
+            <div class="sw-form-group">
+              <label for="auth-username">Username</label>
+              <input type="text" id="auth-username" required placeholder="Enter username" autocomplete="username">
+            </div>
+
+            <div class="sw-form-group">
+              <label for="auth-password">Password</label>
+              <input type="password" id="auth-password" required placeholder="••••••••" autocomplete="current-password">
+            </div>
+
+            <div class="sw-form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:18px;">
+              <input type="checkbox" id="auth-remember" style="width:18px;height:18px;margin:0;accent-color:var(--green);cursor:pointer;" checked>
+              <label for="auth-remember" style="margin:0;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink);">Remember me</label>
+            </div>
+
+            <p id="auth-error" class="auth-error-msg" role="alert" hidden></p>
+
+            <button type="submit" id="btn-auth-submit" class="btn-primary auth-submit-btn">
+              Sign In →
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- ================================================================= -->
     <!-- PAGE ONE: CUSTOMERS DASHBOARD                                     -->
     <!-- ================================================================= -->

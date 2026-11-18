@@ -49,6 +49,37 @@
   margin-left: auto;
 }
 
+.user-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f4ec;
+  border: 1px solid #d4ded0;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.user-profile-badge[hidden] {
+  display: none !important;
+}
+
+.btn-logout-small {
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #9b5a54;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.btn-logout-small:hover {
+  background: #f9e8e6;
+}
+
 .btn-quick-cut {
   background: #315b48;
   color: #fff;
@@ -683,6 +714,102 @@
 }
 
 /* ==========================================================================
+   Auth / Login Page Styles
+   ========================================================================== */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 20px 10px;
+}
+
+.auth-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(36, 60, 54, 0.06);
+  width: 100%;
+  max-width: 440px;
+  padding: 32px 28px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.auth-header h2 {
+  font: 700 22px Manrope, sans-serif;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+.auth-header p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: #f4f6f0;
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.auth-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.auth-tab-btn.active {
+  background: #fff;
+  color: var(--green);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.auth-submit-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 18px;
+  font-size: 14px;
+  justify-content: center;
+}
+
+.auth-error-msg {
+  background: #fdf2f1;
+  color: #a43a34;
+  border: 1px solid #f6cfcc;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+.auth-error-msg[hidden] {
+  display: none !important;
+}
+
+/* ==========================================================================
    Mobile & Small Screen Optimizations
    ========================================================================== */
 @media (max-width: 768px) {
@@ -706,7 +833,38 @@
     gap: 6px;
   }
 
-  .btn-quick-cut {
+  .user-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f4ec;
+  border: 1px solid #d4ded0;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.user-profile-badge[hidden] {
+  display: none !important;
+}
+
+.btn-logout-small {
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #9b5a54;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.btn-logout-small:hover {
+  background: #f9e8e6;
+}
+
+.btn-quick-cut {
     padding: 7px 12px;
     font-size: 12px;
   }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import mimetypes
@@ -13,7 +14,7 @@ from typing import Any, Dict, Optional
 
 from .adapter import ProjectDataAdapter
 from .banding import banding_total
-from .db import CustomerRepository, CuttingRecordRepository, ProjectRepository, init_db
+from .db import CustomerRepository, CuttingRecordRepository, ProjectRepository, UserRepository, init_db
 from .optimizer import optimize
 from .report import generate_html_report, generate_pdf_report
 from .storage import StorageManager
@@ -32,6 +33,7 @@ class SheetwiseRequestHandler(BaseHTTPRequestHandler):
         self.cust_repo = CustomerRepository()
         self.proj_repo = ProjectRepository()
         self.rec_repo = CuttingRecordRepository()
+        self.user_repo = UserRepository()
         self.storage = StorageManager()
         super().__init__(*args, **kwargs)
 
@@ -60,7 +62,14 @@ class SheetwiseRequestHandler(BaseHTTPRequestHandler):
                 "service": "Sheetwise",
                 "version": "1.0.0",
                 "backend": "Python " + sys.version.split()[0],
+                "users_count": self.user_repo.count()
             })
+            return
+
+        # Auth check endpoint
+        if path == "/api/auth/me":
+            # For local session, can return user or status
+            self.send_json({"authenticated": True})
             return
 
         # Customers API
@@ -139,6 +148,10 @@ class SheetwiseRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/optimize":
             self.handle_api_optimize(data)
+        elif path == "/api/auth/register":
+            self.handle_auth_register(data)
+        elif path == "/api/auth/login":
+            self.handle_auth_login(data)
         elif path == "/api/export/svg":
             self.handle_api_export_svg(data)
         elif path == "/api/export/pdf":
@@ -273,6 +286,51 @@ class SheetwiseRequestHandler(BaseHTTPRequestHandler):
             return
 
         self.send_error(HTTPStatus.NOT_FOUND, "Endpoint not found")
+
+    def handle_auth_register(self, data: Dict[str, Any]) -> None:
+        name = (data.get("name") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+
+        if not name or not email or not password:
+            self.send_error(HTTPStatus.BAD_REQUEST, "Name, email, and password are required")
+            return
+
+        if self.user_repo.get_by_email(email):
+            self.send_error(HTTPStatus.CONFLICT, "User with this email already exists")
+            return
+
+        pwd_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        user = self.user_repo.create(name=name, email=email, password_hash=pwd_hash)
+        self.send_json({"success": True, "user": user}, status=HTTPStatus.CREATED)
+
+    def handle_auth_login(self, data: Dict[str, Any]) -> None:
+        username = (data.get("username") or data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+
+        if not username or not password:
+            self.send_error(HTTPStatus.BAD_REQUEST, "Username and password are required")
+            return
+
+        user = self.user_repo.get_by_email(username)
+        if not user:
+            self.send_error(HTTPStatus.UNAUTHORIZED, "Invalid username or password")
+            return
+
+        pwd_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        if user["password_hash"] != pwd_hash:
+            self.send_error(HTTPStatus.UNAUTHORIZED, "Invalid username or password")
+            return
+
+        self.send_json({
+            "success": True,
+            "user": {
+                "id": user["id"],
+                "name": user["name"],
+                "username": user["email"],
+                "created_at": user["created_at"]
+            }
+        })
 
     def handle_create_customer(self, data: Dict[str, Any]) -> None:
         name = data.get("name")
