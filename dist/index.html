@@ -378,6 +378,12 @@
     </div>
   </div>
 
+  <!-- Kick off Neon's cold-start resume before any app logic runs, so the
+       database is (usually) warm by the time the first real query is sent.
+       Fire-and-forget: never marked as a cache snapshot, never blocks. -->
+  <script>
+    fetch('/api/warm').catch(function () {});
+  </script>
   <!-- Core Cutting Engine Scripts (Untouched) -->
   <script src="optimizer.js"></script>
   <script src="banding.js"></script>
@@ -385,6 +391,6 @@
   <script src="pdf.js"></script>
   <script src="app.js?v=share-pdf-2026"></script>
   <!-- Customer & Project Management Integration Script -->
-  <script src="management.js"></script>
+  <script src="management.js?v=cache-2026-11-18"></script>
 </body>
 </html>

@@ -8,3 +8,11 @@ binding = "ASSETS"
 
 [vars]
 DATABASE_URL = "postgresql://neondb_owner:npg_7NJG1iZbqcBr@ep-late-surf-bd0w382s-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# Keep the Neon compute awake during working hours so the first load of the
+# day doesn't pay the cold-start resume. Every 10 minutes ~05:00-20:00 UTC
+# (~06:00-21:00 Morocco / UTC+1), all week. Cloudflare cron is UTC.
+# Free Neon plan allows 191.9 compute-hours/month; if your quota gets tight,
+# widen the interval (e.g. */20) or shorten the hour range.
+[triggers]
+crons = ["*/10 5-20 * * *"]

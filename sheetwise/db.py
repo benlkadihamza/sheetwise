@@ -25,14 +25,31 @@ except ImportError:
 
 try:
     import psycopg2
+    import psycopg2.pool
     from psycopg2.extras import RealDictCursor
     HAS_PSYCOPG2 = True
 except ImportError:
     HAS_PSYCOPG2 = False
 
+# Module-level connection pool (initialized once at first use)
+_pg_pool: Optional[Any] = None
+
 
 def get_database_url() -> Optional[str]:
     return os.environ.get("DATABASE_URL")
+
+
+def get_pg_pool() -> Any:
+    """Return (or lazily create) the shared ThreadedConnectionPool."""
+    global _pg_pool
+    if _pg_pool is None or _pg_pool.closed:
+        db_url = get_database_url()
+        _pg_pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            dsn=db_url,
+        )
+    return _pg_pool
 
 
 def get_sqlite_path() -> str:
@@ -80,9 +97,9 @@ class DBWrapper:
 @contextlib.contextmanager
 def get_connection(db_path: Optional[str] = None) -> Generator[DBWrapper, None, None]:
     if is_postgres() and db_path is None:
-        db_url = get_database_url()
-        # Clean sslmode if necessary for connection
-        conn = psycopg2.connect(db_url)
+        pool = get_pg_pool()
+        conn = pool.getconn()
+        conn.autocommit = False
         wrapper = DBWrapper(conn, is_pg=True)
         try:
             yield wrapper
@@ -91,7 +108,7 @@ def get_connection(db_path: Optional[str] = None) -> Generator[DBWrapper, None, 
             conn.rollback()
             raise
         finally:
-            conn.close()
+            pool.putconn(conn)
     else:
         # SQLite fallback (or explicit sqlite path passed)
         if db_path is None:

@@ -14,6 +14,7 @@
     currentUser: null,        // Logged-in user object {id, name, email}
     currentView: 'customers', // 'login' | 'customers' | 'profile' | 'cutting'
     currentCustomer: null,    // Customer object currently opened in profile
+    currentCustomerId: null,  // Id of the customer being opened (set before data arrives)
     currentProject: null,     // Project object if working on a project
     currentQuickRecord: null, // Quick record object if editing an existing quick record
     quickCustomer: null,      // Customer object selected/typed in quick cut mode
@@ -38,6 +39,46 @@
       return e;
     }
   };
+
+  // -----------------------------------------------------------------
+  // Local snapshot cache
+  // Each DB round trip to Neon costs ~0.7s (more on a cold compute node), so
+  // the app renders the last-known data instantly from localStorage and
+  // refreshes in the background.
+  // -----------------------------------------------------------------
+  const CACHE_PREFIX = 'sheetwise_cache_';
+
+  const cache = {
+    get(key) {
+      try {
+        const raw = localStorage.getItem(CACHE_PREFIX + key);
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(value)); } catch {}
+    },
+    remove(key) {
+      try { localStorage.removeItem(CACHE_PREFIX + key); } catch {}
+    },
+    clearAll() {
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith(CACHE_PREFIX))
+          .forEach(k => localStorage.removeItem(k));
+      } catch {}
+    }
+  };
+
+  // Current search text, so background dashboard refreshes filter with it.
+  let dashboardQuery = '';
+
+  function matchesCustomer(cust, query) {
+    if (!query) return true;
+    const needle = query.trim().toLowerCase();
+    return String(cust.name || '').toLowerCase().includes(needle) ||
+      String(cust.phone || '').toLowerCase().includes(needle);
+  }
 
   // API Client
   const API = {
@@ -175,9 +216,11 @@
       setupAuthView();
     } else if (view === 'customers') {
       dom.show(vCustomers);
+      // One load: paints instantly from cache, then revalidates in the background.
       loadCustomersDashboard();
     } else if (view === 'profile') {
       dom.show(vProfile);
+      AppState.currentCustomerId = params.customerId || null;
       if (params.customerId) {
         loadCustomerProfile(params.customerId);
       }
@@ -267,6 +310,8 @@
 
   function handleLogout() {
     AppState.currentUser = null;
+    cache.clearAll();
+    cachedCustomers = [];
     try {
       localStorage.removeItem('sheetwise_user');
       sessionStorage.removeItem('sheetwise_user');
@@ -283,13 +328,30 @@
   async function loadCustomersDashboard() {
     const grid = dom.id('customers-grid');
     if (!grid) return;
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading customers…</div>';
+    dashboardQuery = dom.val(dom.id('customer-search-input')) || '';
+
+    // Instant paint from the last snapshot, if we have one.
+    if (!cachedCustomers.length) {
+      const stored = cache.get('customers_all');
+      if (stored && stored.length) {
+        cachedCustomers = stored;
+        renderCustomersList(cachedCustomers.filter(c => matchesCustomer(c, dashboardQuery)));
+      }
+    }
+    // Only show the spinner if there is nothing to show yet.
+    if (!cachedCustomers.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading customers…</div>';
+    }
 
     try {
-      const searchVal = dom.val(dom.id('customer-search-input')) || '';
-      cachedCustomers = await API.getCustomers(searchVal);
-      renderCustomersList(cachedCustomers);
+      // Always fetch the full list: the list is small and cached, so filtering
+      // locally avoids another DB round trip on every keystroke.
+      cachedCustomers = await API.getCustomers('');
+      cache.set('customers_all', cachedCustomers);
+      renderCustomersList(cachedCustomers.filter(c => matchesCustomer(c, dashboardQuery)));
     } catch (err) {
+      // Keep the cached list on screen if the refresh fails.
+      if (cachedCustomers.length) return;
       grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9b5a54">Failed to load customers: ${err.message}</div>`;
     }
   }
@@ -399,6 +461,7 @@
     try {
       if (editingCustomerId) {
         await API.updateCustomer(editingCustomerId, data);
+        cache.remove('profile_' + editingCustomerId);
       } else {
         await API.createCustomer(data);
       }
@@ -419,6 +482,9 @@
     }
     try {
       await API.deleteCustomer(cust.id);
+      cache.remove('profile_' + cust.id);
+      cachedCustomers = cachedCustomers.filter(c => c.id !== cust.id);
+      cache.set('customers_all', cachedCustomers);
       if (AppState.currentView === 'customers') {
         loadCustomersDashboard();
       } else {
@@ -434,25 +500,46 @@
   // -------------------------------------------------------------
   let currentCustomerActivity = [];
 
-  async function loadCustomerProfile(customerId) {
-    try {
-      const cust = await API.getCustomer(customerId);
-      AppState.currentCustomer = cust;
+  function paintCustomerProfile(cust, activity) {
+    AppState.currentCustomer = cust;
 
-      // Update header
-      dom.text(dom.id('profile-name'), cust.name);
-      dom.text(dom.id('profile-phone'), cust.phone ? `📞 ${cust.phone}` : 'No phone');
-      dom.text(dom.id('profile-email'), cust.email ? `✉️ ${cust.email}` : 'No email');
-      dom.text(dom.id('profile-address'), cust.address ? `📍 ${cust.address}` : 'No address');
+    // Update header
+    dom.text(dom.id('profile-name'), cust.name);
+    dom.text(dom.id('profile-phone'), cust.phone ? `📞 ${cust.phone}` : 'No phone');
+    dom.text(dom.id('profile-email'), cust.email ? `✉️ ${cust.email}` : 'No email');
+    dom.text(dom.id('profile-address'), cust.address ? `📍 ${cust.address}` : 'No address');
 
-      // Update stats
-      dom.text(dom.id('stat-projects-count'), cust.project_count || 0);
-      dom.text(dom.id('stat-quick-count'), cust.quick_count || 0);
+    // Update stats
+    dom.text(dom.id('stat-projects-count'), cust.project_count || 0);
+    dom.text(dom.id('stat-quick-count'), cust.quick_count || 0);
 
-      // Load activity
-      currentCustomerActivity = await API.getCustomerActivity(customerId);
+    if (Array.isArray(activity)) {
+      currentCustomerActivity = activity;
       renderCustomerActivity(currentCustomerActivity);
+    }
+  }
+
+  async function loadCustomerProfile(customerId) {
+    // Paint the cached profile immediately if this is the same customer.
+    const cachedProfile = cache.get('profile_' + customerId);
+    if (cachedProfile && cachedProfile.customer) {
+      paintCustomerProfile(cachedProfile.customer, cachedProfile.activity);
+    }
+
+    try {
+      // Both endpoints are independent: run them in parallel (one round trip
+      // of latency instead of two sequential ones).
+      const [cust, activity] = await Promise.all([
+        API.getCustomer(customerId),
+        API.getCustomerActivity(customerId)
+      ]);
+      cache.set('profile_' + customerId, { customer: cust, activity });
+      // Don't paint over a different profile the user has since navigated to.
+      if (AppState.currentView === 'profile' && AppState.currentCustomerId === customerId) {
+        paintCustomerProfile(cust, activity);
+      }
     } catch (err) {
+      if (cachedProfile) return;
       alert(`Error loading profile: ${err.message}`);
       navigateTo('customers');
     }
@@ -531,6 +618,7 @@
             await API.deleteRecord(item.id);
           }
           if (AppState.currentCustomer) {
+            cache.remove('profile_' + AppState.currentCustomer.id);
             loadCustomerProfile(AppState.currentCustomer.id);
           }
         } catch (e) {
@@ -581,6 +669,7 @@
         description
       });
       closeNewProjectModal();
+      if (AppState.currentCustomer) cache.remove('profile_' + AppState.currentCustomer.id);
       // Open in cutting interface directly
       openProjectInCutting(proj.id);
     } catch (err) {
@@ -751,6 +840,9 @@
           project_id: AppState.currentProject.id,
           cutting_data: cuttingData
         });
+        if (AppState.currentProject.customer_id) {
+          cache.remove('profile_' + AppState.currentProject.customer_id);
+        }
         updateSaveStatusIndicator('saved', 'Project Registered');
       } catch (err) {
         updateSaveStatusIndicator('dirty', 'Save failed');
@@ -760,6 +852,13 @@
       // SITUATION C: Quick Cutting
       handleQuickCuttingRegistration(cuttingData);
     }
+  }
+
+  function findCachedCustomerByName(name) {
+    const needle = String(name || '').trim().toLowerCase();
+    if (!needle) return null;
+    const list = cachedCustomers.length ? cachedCustomers : (cache.get('customers_all') || []);
+    return list.find(c => String(c.name || '').trim().toLowerCase() === needle) || null;
   }
 
   async function handleQuickCuttingRegistration(cuttingData) {
@@ -787,14 +886,19 @@
       return;
     }
 
-    // Check if customer exists
+    // Check if customer exists (locally first, to skip a DB round trip)
     let existingCustomer = null;
     if (AppState.quickCustomer && AppState.quickCustomer.name.toLowerCase() === inputVal.toLowerCase()) {
       existingCustomer = AppState.quickCustomer;
     } else {
-      const checkRes = await API.checkCustomer(inputVal);
-      if (checkRes.exists) {
-        existingCustomer = checkRes.customer;
+      const localHit = findCachedCustomerByName(inputVal);
+      if (localHit) {
+        existingCustomer = localHit;
+      } else {
+        const checkRes = await API.checkCustomer(inputVal);
+        if (checkRes.exists) {
+          existingCustomer = checkRes.customer;
+        }
       }
     }
 
@@ -830,6 +934,7 @@
           name: recordName,
           cutting_data: cuttingData
         });
+        cache.remove('profile_' + customer.id);
         AppState.currentQuickRecord = res;
         AppState.quickCustomer = customer;
         const displayName = res.name || `Quick Cut · ${customer.name}`;
@@ -868,6 +973,8 @@
         updateSaveStatusIndicator('saving', 'Creating customer & saving…');
         // 1. Create customer
         const newCust = await API.createCustomer({ name: newCustomerName });
+        cachedCustomers.unshift(newCust);
+        cache.set('customers_all', cachedCustomers);
         // 2. Register cutting under new customer
         const res = await API.saveQuickRecord({
           record_id: AppState.currentQuickRecord ? AppState.currentQuickRecord.id : null,
@@ -880,6 +987,7 @@
         const displayName = res.name || `Quick Cut · ${newCust.name}`;
         dom.text(dom.id('context-workspace-title'), `${displayName} (${newCust.name})`);
         updateSaveStatusIndicator('saved', 'Customer & Cutting Registered');
+        cache.remove('profile_' + newCust.id);
       } catch (err) {
         updateSaveStatusIndicator('dirty', 'Save failed');
         alert(`Failed: ${err.message}`);
@@ -913,7 +1021,10 @@
           return;
         }
         try {
-          const results = await API.getCustomers(query);
+          // Suggest from the cached list first; only hit the DB if it's empty.
+          let pool = cachedCustomers.length ? cachedCustomers : (cache.get('customers_all') || []);
+          if (!pool.length) pool = await API.getCustomers(query);
+          const results = pool.filter(c => matchesCustomer(c, query));
           list.innerHTML = '';
           if (results.length > 0) {
             results.slice(0, 5).forEach(c => {
@@ -978,7 +1089,12 @@
       let t = null;
       custSearch.addEventListener('input', () => {
         clearTimeout(t);
-        t = setTimeout(() => loadCustomersDashboard(), 250);
+        // Filtering is local: no DB round trip per keystroke.
+        t = setTimeout(() => {
+          if (!cachedCustomers.length) return; // still loading: don't flash "No customers found"
+          dashboardQuery = custSearch.value || '';
+          renderCustomersList(cachedCustomers.filter(c => matchesCustomer(c, dashboardQuery)));
+        }, 80);
       });
     }
 
@@ -1038,6 +1154,12 @@
 
     // Load persisted session if available (check localStorage, then sessionStorage)
     try {
+      // Pre-populate the customer list from cache so the first dashboard paint
+      // (right after login) doesn't wait on the database.
+      if (!cachedCustomers.length) {
+        const stored = cache.get('customers_all');
+        if (stored && stored.length) cachedCustomers = stored;
+      }
       const savedUser = localStorage.getItem('sheetwise_user') || sessionStorage.getItem('sheetwise_user');
       if (savedUser) {
         AppState.currentUser = JSON.parse(savedUser);
