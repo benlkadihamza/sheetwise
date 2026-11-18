@@ -185,6 +185,16 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
       return data;
+    },
+    async changePassword(userId, currentPassword, newPassword) {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, current_password: currentPassword, new_password: newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to change password');
+      return data;
     }
   };
 
@@ -302,9 +312,107 @@
 
     if (AppState.currentUser) {
       dom.text(nameEl, `👤 ${AppState.currentUser.name || AppState.currentUser.username || 'Admin'}`);
+      dom.text(dom.id('settings-menu-user'), `Signed in as ${AppState.currentUser.name || AppState.currentUser.username || 'Admin'}`);
       dom.show(widget);
     } else {
       dom.hide(widget);
+    }
+  }
+
+  // -------------------------------------------------------------
+  // SETTINGS (⚙️): menu + change password
+  // -------------------------------------------------------------
+  function toggleSettingsMenu(force) {
+    const menu = dom.id('settings-menu');
+    const gear = dom.id('btn-settings');
+    if (!menu || !gear) return;
+    const open = force !== undefined ? force : menu.hasAttribute('hidden');
+    if (open) dom.show(menu); else dom.hide(menu);
+    gear.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function openChangePasswordModal() {
+    toggleSettingsMenu(false);
+    const user = AppState.currentUser || {};
+    const errEl = dom.id('cp-error');
+    const okEl = dom.id('cp-success');
+    dom.val(dom.id('cp-current'), '');
+    dom.val(dom.id('cp-new'), '');
+    dom.val(dom.id('cp-confirm'), '');
+    if (errEl) { errEl.textContent = ''; dom.hide(errEl); }
+    if (okEl) { okEl.textContent = ''; dom.hide(okEl); }
+    dom.text(dom.id('change-password-for'), `Signed in as ${user.name || 'user'}${user.username ? ' (' + user.username + ')' : ''}`);
+    dom.show(dom.id('change-password-modal'));
+    document.body.style.overflow = 'hidden';
+    if (window.innerWidth > 768) {
+      const cur = dom.id('cp-current');
+      if (cur) cur.focus();
+    }
+  }
+
+  function closeChangePasswordModal() {
+    dom.hide(dom.id('change-password-modal'));
+    document.body.style.overflow = '';
+  }
+
+  function showChangePasswordError(msg) {
+    const errEl = dom.id('cp-error');
+    const okEl = dom.id('cp-success');
+    if (okEl) dom.hide(okEl);
+    if (errEl) { errEl.textContent = msg; dom.show(errEl); }
+  }
+
+  async function handleChangePasswordSubmit(e) {
+    e.preventDefault();
+    const errEl = dom.id('cp-error');
+    const okEl = dom.id('cp-success');
+    const current = dom.val(dom.id('cp-current')) || '';
+    const next = dom.val(dom.id('cp-new')) || '';
+    const confirm = dom.val(dom.id('cp-confirm')) || '';
+    const btn = dom.id('cp-submit');
+    const user = AppState.currentUser;
+
+    if (errEl) dom.hide(errEl);
+    if (okEl) dom.hide(okEl);
+
+    if (!user || !user.id) {
+      showChangePasswordError('Your session has no user id. Please log out and sign in again.');
+      return;
+    }
+    if (!current) {
+      showChangePasswordError('Please enter your current password.');
+      return;
+    }
+    if (next.length < 6) {
+      showChangePasswordError('New password must be at least 6 characters.');
+      return;
+    }
+    if (next === current) {
+      showChangePasswordError('New password must be different from the current one.');
+      return;
+    }
+    if (next !== confirm) {
+      showChangePasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    const origLabel = btn ? btn.textContent : '';
+    try {
+      if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+      await API.changePassword(user.id, current, next);
+      dom.val(dom.id('cp-current'), '');
+      dom.val(dom.id('cp-new'), '');
+      dom.val(dom.id('cp-confirm'), '');
+      if (okEl) {
+        okEl.textContent = '✓ Password updated. You stay signed in on this device.';
+        dom.show(okEl);
+      } else {
+        alert('Password updated.');
+      }
+    } catch (err) {
+      showChangePasswordError(err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = origLabel; }
     }
   }
 
@@ -1151,6 +1259,33 @@
     if (authForm) authForm.onsubmit = handleAuthSubmit;
     const btnLogout = dom.id('btn-logout');
     if (btnLogout) btnLogout.onclick = handleLogout;
+
+    // Settings gear + change password
+    const btnSettings = dom.id('btn-settings');
+    if (btnSettings) {
+      btnSettings.onclick = (e) => {
+        e.stopPropagation();
+        toggleSettingsMenu();
+      };
+    }
+    const btnOpenCp = dom.id('btn-open-change-password');
+    if (btnOpenCp) btnOpenCp.onclick = openChangePasswordModal;
+    const cpForm = dom.id('change-password-form');
+    if (cpForm) cpForm.onsubmit = handleChangePasswordSubmit;
+    const cpClose = dom.id('change-password-close');
+    if (cpClose) cpClose.onclick = closeChangePasswordModal;
+    const cpCancel = dom.id('cp-cancel');
+    if (cpCancel) cpCancel.onclick = closeChangePasswordModal;
+    const cpBackdrop = dom.id('change-password-backdrop');
+    if (cpBackdrop) cpBackdrop.onclick = closeChangePasswordModal;
+    // Close the settings menu on any outside click (the gear stops propagation).
+    document.addEventListener('click', () => toggleSettingsMenu(false));
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      toggleSettingsMenu(false);
+      const cpModal = dom.id('change-password-modal');
+      if (cpModal && !cpModal.hasAttribute('hidden')) closeChangePasswordModal();
+    });
 
     // Load persisted session if available (check localStorage, then sessionStorage)
     try {

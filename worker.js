@@ -101,12 +101,21 @@ export default {
         const now = new Date().toISOString();
 
         // Single round trip: insert only if the email is free, otherwise return nothing.
-        const inserted = await sql`
-          INSERT INTO users (id, name, email, password_hash, created_at)
-          SELECT ${uid}, ${name}, ${email}, ${pwdHash}, ${now}
-          WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(email) = ${email})
-          RETURNING id, name, email, created_at;
-        `;
+        let inserted;
+        try {
+          inserted = await sql`
+            INSERT INTO users (id, name, email, password_hash, created_at)
+            SELECT ${uid}, ${name}, ${email}, ${pwdHash}, ${now}
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(email) = ${email})
+            RETURNING id, name, email, created_at;
+          `;
+        } catch (err) {
+          // Concurrent registration with the same email hit the unique index.
+          if (/duplicate key|unique constraint/i.test(err.message)) {
+            return json({ error: "User already exists with this email" }, 409);
+          }
+          throw err;
+        }
         if (inserted.length === 0) {
           return json({ error: "User already exists with this email" }, 409);
         }
@@ -143,6 +152,47 @@ export default {
           success: true,
           user: { id: user.id, name: user.name, username: user.email, created_at: user.created_at }
         });
+      }
+
+      // POST /api/auth/change-password
+      if (pathname === "/api/auth/change-password" && request.method === "POST") {
+        const data = await request.json();
+        const userId = (data.user_id || "").trim();
+        const currentPassword = data.current_password || "";
+        const newPassword = data.new_password || "";
+
+        if (!userId || !currentPassword || !newPassword) {
+          return json({ error: "Current and new password are required" }, 400);
+        }
+        if (newPassword.length < 6) {
+          return json({ error: "New password must be at least 6 characters" }, 400);
+        }
+        if (newPassword === currentPassword) {
+          return json({ error: "New password must be different from the current one" }, 400);
+        }
+
+        const sha256 = async (str) => {
+          const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+          return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+        };
+        const currentHash = await sha256(currentPassword);
+        const newHash = await sha256(newPassword);
+
+        // Verify the current password and update in a single round trip; the
+        // WHERE clause on the UPDATE re-checks the hash so a stale check can't
+        // overwrite a password changed in the meantime.
+        const rows = await sql`
+          WITH verified AS (
+            SELECT id FROM users WHERE id = ${userId} AND password_hash = ${currentHash}
+          )
+          UPDATE users SET password_hash = ${newHash}
+          WHERE id IN (SELECT id FROM verified)
+          RETURNING id;
+        `;
+        if (rows.length === 0) {
+          return json({ error: "Current password is incorrect" }, 401);
+        }
+        return json({ success: true });
       }
 
       // GET /api/customers or /api/customers?q=...
